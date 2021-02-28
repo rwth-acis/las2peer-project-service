@@ -21,6 +21,6 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
-    #- uses: codecov/codecov-action@v1
-    #  with:
-    #    files: ./project_service/export/jacoco/test/jacocoTestReport.xml
+    - uses: codecov/codecov-action@v1
+      with:
+        files: ./project_service/export/jacoco/test/jacocoTestReport.xml
