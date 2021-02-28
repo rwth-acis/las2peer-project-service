@@ -1,0 +1,27 @@
+/project_service/output/
+/project_service/export/
+/node-storage/
+/.las2peer/
+/tmp/
+/log/
+/project_service/log/
+/lib/
+/service/
+/out/
+/.idea/
+*.iml
+.DS_Store
+/.settings/
+/junitvmwatcher*.properties
+/junit*.properties
+/etc/startup/
+*.secret
+.classpath
+.project
+.settings
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
