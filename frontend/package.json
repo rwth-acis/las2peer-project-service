@@ -6,7 +6,7 @@
   "module": "project-list.js",
   "type": "module",
   "scripts": {
-    "serve": "es-dev-server --node-resolve --watch",
+    "serve": "web-dev-server --node-resolve --watch --open",
     "build": "echo \"This is not a TypeScript project, so no need to build.\""
   },
   "author": {
@@ -14,9 +14,15 @@
     "email": "acis@dbis.rwth-aachen.de"
   },
   "dependencies": {
+    "@polymer/paper-button": "^3.0.1",
+    "@polymer/paper-card": "^3.0.1",
+    "@polymer/paper-dialog": "^3.0.1",
+    "@polymer/paper-input": "^3.2.1",
+    "@polymer/paper-spinner": "^3.0.2",
+    "@polymer/paper-tabs": "^3.1.0",
     "lit-element": "^2.4.0"
   },
   "devDependencies": {
-    "es-dev-server": "^2.1.0"
+    "@web/dev-server": "^0.1.8"
   }
 }
