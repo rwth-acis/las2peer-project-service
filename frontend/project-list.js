@@ -158,7 +158,7 @@ export class ProjectList extends LitElement {
     this.listedProjects = [];
     this.projectsOnlineUser = new Object();
     // use a default value for project service URL for local testing
-    this.projectServiceURL = "127.0.0.1:8080";
+    this.projectServiceURL = "http://127.0.0.1:8080";
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
 
     this.disableAllProjects = false;
@@ -329,12 +329,13 @@ export class ProjectList extends LitElement {
     this.projectsLoading = true;
 
     // clear current project list
-    this.projects = [];
+    /*this.projects = [];
     this.listedProjects = [];
-
+*/
     // Following code is used for testing only
     this.projectsLoading = false;
-    let data = [
+
+   /*let data = [
       {
         "id": 1,
         "name": "Project 1"
@@ -345,7 +346,7 @@ export class ProjectList extends LitElement {
       }
     ];
     this.projects = data;
-    this.listedProjects = data;
+    this.listedProjects = data;*/
     /*
     // only send authHeader when not all projects should be shown, but only the
     // one from the current user
@@ -434,7 +435,7 @@ export class ProjectList extends LitElement {
    */
   _createProject() {
     const projectName = this.shadowRoot.getElementById("input-project-name").value;
-
+    const linkedGroup = this.shadowRoot.getElementById("input-group-name").value;
     // close dialog (then also the button is not clickable and user cannot create project twice or more often)
     // important: get projectName before closing dialog, because when closing the dialog the input field gets cleared
     this._closeCreateProjectDialogClicked();
@@ -442,39 +443,70 @@ export class ProjectList extends LitElement {
     // show loading dialog
     this.shadowRoot.getElementById("dialog-loading").open();
 
+    // currently fetches members from contact service but does not check whether project already exists (code is there but commented)
     if(projectName) {
-      /*fetch(this.projectServiceURL + "/projects", {
-        method: "POST",
-        headers: Auth.getAuthHeader(),
-        body: JSON.stringify({
-          "name": projectName,
-          "access_token": Auth.getAccessToken()
-        })
-      }).then(response => {
-        // close loading dialog
+      fetch(this.contactServiceURL + "/groups/" + linkedGroup + "/member", {
+        method: "GET",
+        headers: Auth.getAuthHeaderWithSub() 
+      }).then( response => {
+          if(!response.ok) throw Error(response.status);
+          console.log(typeof response)
+          console.log("ssssssss" + Object.keys(response));
+          return response.json();
+      }).then(data => {
+        console.log(data);
+        const users = Object.values(data);
+        const newProject = {"id":this.projects.length, "name":projectName, "Linked Group":linkedGroup, "Group Members":users};
+
+        // the following code is just cherry picked from the commented stuff for testing purposes..
+        this.projects.push(newProject);
+        this.listedProjects.push(newProject);
         this.shadowRoot.getElementById("dialog-loading").close();
+        this.shadowRoot.getElementById("toast-success").show();
+        this.shadowRoot.getElementById("input-project-name").value = "";
+        console.log("please" + this.projects);
+        this.showProjects(false);
+        this.tabSelected = 0;
+            this.shadowRoot.getElementById("my-and-all-projects").selected = 0;
+        console.log("please" + this.projects);
+        /*  fetch(Static.ProjectManagementServiceURL + "/projects", {
+          method: "POST",
+          headers: Auth.getAuthHeader(),
+          body: JSON.stringify({
+            "name": projectName,
+            "access_token": Auth.getAccessToken(),
+            "linkedGroup": linkedGroup,
+            "users": users
+          })
+        }).then(response => {
+          // close loading dialog
+          this.shadowRoot.getElementById("dialog-loading").close();
 
-        if(response.status == 201) {
-          // project got created successfully
-          this.shadowRoot.getElementById("toast-success").show();
+          if(response.status == 201) {
+            // project got created successfully
+            this.shadowRoot.getElementById("toast-success").show();
 
-          // clear input field for project name in the dialog
-          this.shadowRoot.getElementById("input-project-name").value = "";
+            // clear input field for project name in the dialog
+            this.shadowRoot.getElementById("input-project-name").value = "";
 
-          // since a new project exists, reload projects from server
-          this.showProjects(false);
-          // switch to tab "My Projects"
-          this.tabSelected = 0;
-          this.shadowRoot.getElementById("my-and-all-projects").selected = 0;
-        } else if(response.status == 409) {
-          // a project with the given name already exists
-          this.shadowRoot.getElementById("toast-already-existing").show();
-        } else if(response.status == 401) {
-          Auth.removeAuthDataFromLocalStorage();
-          location.reload();
-        }
-      });*/
+            // since a new project exists, reload projects from server
+            this.showProjects(false);
+            // switch to tab "My Projects"
+            this.tabSelected = 0;
+            this.shadowRoot.getElementById("my-and-all-projects").selected = 0;
+          } else if(response.status == 409) {
+            // a project with the given name already exists
+            this.shadowRoot.getElementById("toast-already-existing").show();
+          } else if(response.status == 401) {
+            Auth.removeAuthDataFromLocalStorage();
+            location.reload();
+          }
+          // TODO: check what happens when access_token is missing in localStorage
+        });*/
+      });
     }
+    
+
   }
 
   /**
