@@ -9,6 +9,8 @@ import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-tabs';
 
+import Auth from './util/auth';
+
 
 /**
  * The project list element provides the functionality to list existing projects and to create new ones.
@@ -157,7 +159,7 @@ export class ProjectList extends LitElement {
     this.projectsOnlineUser = new Object();
     // use a default value for project service URL for local testing
     this.projectServiceURL = "127.0.0.1:8080";
-    this.contactServiceURL = "127.0.0.1:8080";
+    this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
 
     this.disableAllProjects = false;
 
@@ -247,9 +249,10 @@ export class ProjectList extends LitElement {
    */
   _onCreateProjectButtonClicked() {
     // add statusbar to be able to get user infos for this step
-    fetch(this.contactServiceUrl + "/groups", {
+    console.log(this.contactServiceURL);
+    fetch(this.contactServiceURL + "/groups", {
       method: "GET",
-      headers: "Auth.getAuthHeaderWithSub()"
+      headers: Auth.getAuthHeaderWithSub()
     }).then(response => {
       if(!response.ok) throw Error(response.status);
       console.log(typeof response)

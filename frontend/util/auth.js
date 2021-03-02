@@ -32,7 +32,7 @@ export default class Auth {
     var userInfo = JSON.parse(localStorage.getItem(this.KEY_USER_INFO));
     return {
       "access-token": localStorage.getItem(this.KEY_ACCESS_TOKEN),
-      "Authorization": "Basic "+ btoa(userInfo.loginName + ":" + userInfo.sub)
+      "Authorization": "Basic "+ btoa(userInfo.preferred_username + ":" + userInfo.sub)
     }
   }
   

@@ -50,11 +50,10 @@ export class DemoElement extends LitElement {
           return response.json();
         }
       }).then(data => {
-        console.log(data);
+        console.log(data.name);
        // const userInfo = Common.getUserInfo();
-        console.log(userInfo);
         //userInfo.sub = data.sub;
-        //Common.storeUserInfo(userInfo);
+        Common.storeUserInfo(data);
       });
    
 

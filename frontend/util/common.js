@@ -25,6 +25,7 @@ export default class Common {
     localStorage.setItem(this.KEY_USER_INFO, JSON.stringify(userInfo));
   }
 
+
   /**
    * Removes the userInfo from localStorage.
    * This method may be used when user has logged out.
