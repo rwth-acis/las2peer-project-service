@@ -96,18 +96,17 @@ export class DemoElement extends LitElement {
     return html`
     <las2peer-frontend-statusbar
     id="statusBar"
-    service="Community Application Editor"
+    service="Project List Demo"
     oidcpopupsigninurl="/callbacks/popup-signin-callback.html"
     oidcpopupsignouturl="/callbacks/popup-signout-callback.html"
     oidcsilentsigninturl="/callbacks/silent-callback.html"
     oidcclientid="d8e6c0d3-fb09-49cc-9a6d-f1763d39a0a7"
-    subtitle="{STATUSBAR_SUBTITLE}"
     suppresswidgeterror="true"
     autoAppendWidget=true
     ></las2peer-frontend-statusbar>
       <h2>Project list with "All Projects" enabled</h2>
       <div style="display: flex">
-        <project-list projectServiceURL="test" @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
+        <project-list @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
         <div style="flex: 1; margin-left: 1em">
           <h1>Demo information:</h1>
           <h3>Selected project:</h3>

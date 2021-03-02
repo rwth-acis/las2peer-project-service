@@ -193,6 +193,7 @@ export class ProjectList extends LitElement {
                 <div style="margin-left: auto; display: flex">
                   ${this.getListOfProjectOnlineUsers(project.id) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
                   <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.id)}</p>
+                  <slot name="project-${project.id}"></slot>
                 </div>
               </div>
             </paper-card>
