@@ -4,7 +4,11 @@ import '@polymer/paper-button/paper-button.js';
 import '@polymer/paper-input/paper-input.js';
 import '@polymer/paper-dialog/paper-dialog.js';
 import '@polymer/paper-spinner/paper-spinner-lite.js';
+import '@polymer/paper-dropdown-menu/paper-dropdown-menu.js';
+import '@polymer/paper-item/paper-item.js';
+import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-tabs';
+
 
 /**
  * The project list element provides the functionality to list existing projects and to create new ones.
@@ -90,6 +94,10 @@ export class ProjectList extends LitElement {
 
   static get properties() {
     return {
+      // l2p groups
+      groups:{
+        type: Array
+      },
       /**
        * Array containing all the projects that were loaded from las2peer project service.
        */
@@ -130,17 +138,26 @@ export class ProjectList extends LitElement {
        */
       projectServiceURL: {
         type: String
+      },
+
+      /**
+      * URL where the frontend can access the las2peer contact service REST API.
+      */
+      contactServiceURL: {
+        type: String
       }
     };
   }
 
   constructor() {
     super();
+    this.groups = [];
     this.projects = [];
     this.listedProjects = [];
     this.projectsOnlineUser = new Object();
     // use a default value for project service URL for local testing
     this.projectServiceURL = "127.0.0.1:8080";
+    this.contactServiceURL = "127.0.0.1:8080";
 
     this.disableAllProjects = false;
 
@@ -189,7 +206,13 @@ export class ProjectList extends LitElement {
         
         <paper-input id="input-project-name" @input="${(e) => this._onInputProjectNameChanged(e.target.value)}" 
             placeholder="Project Name"></paper-input>
-        
+        <paper-dropdown-menu id="input-group-name" label="Link Group to Project:" 
+        ><paper-listbox slot="dropdown-content" class="dropdown-content">
+          ${this.groups.map(group => html`
+          <paper-item value="${group}">${group}</paper-item>
+            `)}
+        </paper-listbox>
+        </paper-dropdown-menu>
         <div class="buttons">
           <paper-button @click="${this._closeCreateProjectDialogClicked}" dialog-dismiss>Cancel</paper-button>
           <paper-button id="dialog-button-create" @click="${this._createProject}" dialog-confirm>Create</paper-button>
@@ -222,10 +245,42 @@ export class ProjectList extends LitElement {
    * @private
    */
   _onCreateProjectButtonClicked() {
+    // add statusbar to be able to get user infos for this step
+    fetch(this.contactServiceUrl + "/groups", {
+      method: "GET",
+      headers: "Auth.getAuthHeaderWithSub()"
+    }).then(response => {
+      if(!response.ok) throw Error(response.status);
+      console.log(typeof response)
+      console.log("ssssssss" + Object.keys(response));
+      return response.json();
+    }).then(data => {
+      // store loaded groups
+    this.groups = Object.values(data);
+    // only open popup once group loaded
     this.shadowRoot.getElementById("dialog-create-project").open();
     // disable create button until user entered a project name
     this.shadowRoot.getElementById("dialog-button-create").disabled = true;
+    }).catch(error => {
+      console.log("ssdlkjidhaidjkol" + error.message);
+      if(error.message == "401") {
+        // user is not authorized
+        // maybe the access token has expired
+        Auth.removeAuthDataFromLocalStorage();
+        location.reload();
+      } else {
+        console.log(error);
+        // in case of contactservice not running, which should not happen in real deployment
+        this.groups = [];
+        // only open popup once group loaded
+        this.shadowRoot.getElementById("dialog-create-project").open();
+        // disable create button until user entered a project name
+        this.shadowRoot.getElementById("dialog-button-create").disabled = true;
+      }
+
+    });
   }
+  
 
   /**
    * Gets called when the search input gets updated by the user. Updates listedProjects array correspondingly.
