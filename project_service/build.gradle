@@ -20,9 +20,14 @@ dependencies {
     // Use JUnit test framework.
     testImplementation "junit:junit:4.13.2"
 
+	// https://mvnrepository.com/artifact/org.json/json
+compileOnly group: 'org.json', name: 'json', version: '20201115'
+	
+	compileOnly 'com.googlecode.json-simple:json-simple:1.1.1'
     // las2peer bundle which is not necessary in the runtime path
     // compileOnly will be moved into the lib dir afterwards
     compileOnly "i5:las2peer-bundle:${project.property('core.version')}"
+    
 }
 
 configurations {
