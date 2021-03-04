@@ -1,6 +1,7 @@
 package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
+import java.util.Set;
 import java.util.logging.Level;
 
 import javax.ws.rs.GET;
@@ -29,6 +30,7 @@ import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
+import net.minidev.json.JSONObject;
 import i5.las2peer.connectors.webConnector.client.ClientResponse;
 import i5.las2peer.connectors.webConnector.client.MiniClient;
 import org.json.simple.parser.ParseException;
@@ -52,8 +54,6 @@ import i5.las2peer.services.projectService.exception.ProjectNotFoundException;
 //import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.String;
 import i5.las2peer.services.projectService.project.User;
 //import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.auth.Agent;
-
-
 import i5.las2peer.api.execution.ServiceNotFoundException;
 import i5.las2peer.api.execution.ServiceNotAvailableException;
 import i5.las2peer.api.execution.InternalServiceException;
@@ -77,28 +77,14 @@ import i5.las2peer.api.execution.ServiceNotAuthorizedException;
 				))
 @ServicePath("/projects")
 public class ProjectService extends RESTService {
-	ProjectService service = (ProjectService) Context.get().getService();
 	private final static String projects_prefix = "projects";
 	
-	/**
-	 * Main endpoint of the project service.
-	 * 
-	 * @return Returns an HTTP response containing a message that the service is running.
-	 */
-	@GET
-	@Path("/")
-	@Produces(MediaType.TEXT_PLAIN)
-	@ApiOperation(value = "Method for checking that the service is running.")
-	@ApiResponses(
-			value = { @ApiResponse(
-					code = HttpURLConnection.HTTP_OK,
-					message = "Project service is running.") })
-	public Response getMain() {
-		return Response.ok().entity("Project service is running.").build();
+	@Override
+	protected void initResources() {
+		getResourceConfig().register(this);
 	}
-	
 	/**
-	 * Creates a new project in the database.
+	 * Creates a new project in the pastry storage.
 	 * Therefore, the user needs to be authorized.
 	 * First, checks if a project with the given name already exists.
 	 * If not, then the new project gets stored into the database.
@@ -107,7 +93,7 @@ public class ProjectService extends RESTService {
 	 */
 	@POST
 	@Path("/")
-	@Consumes(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.TEXT_PLAIN)
 	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
 	@ApiResponses(value = {
 			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, project created."),
@@ -138,19 +124,24 @@ public class ProjectService extends RESTService {
 						Context.get().requestEnvelope(identifier);
 						return Response.status(Status.BAD_REQUEST).entity("Project already exists").build();
 					} catch (EnvelopeNotFoundException e) {
+						System.out.println("Enveleope did not exist creating...");
 						cc = new ProjectContainer();
 						// try to create group
 						//groupAgent = Context.get().createGroupAgent(members, name);
 						cc.addProject(project);
+						System.out.println("Creating envelope");
 						env = Context.get().createEnvelope(identifier, agent);
+						System.out.println("Setting envelope content");
 						env.setContent(cc);
-						Context.get().storeEnvelope(env, agent);
+						System.out.println("Storing emnvelope");
+						Context.get().storeEnvelope(env);
+						System.out.println("Storing complete");
 					}
 				} catch (Exception e) {
 					// write error to logfile and console
 				//	logger.log(Level.SEVERE, "Can't persist to network storage!", e);
 				//	e.printStackTrace();
-					return Response.status(Status.BAD_REQUEST).entity("Error").build();
+					return Response.status(Status.BAD_REQUEST).entity(e + "Error").build();
 				}
 				//pleasee ignore this for now :)
 			} catch (ParseException | ServiceNotFoundException | ServiceNotAvailableException | InternalServiceException e) {
@@ -159,5 +150,55 @@ public class ProjectService extends RESTService {
 			} 
 		}
 		return Response.status(Status.OK).entity("Added Project To l2p Storage").build();
+	}
+	
+	
+	/**
+	 * Gets a user's projects
+	 * Therefore, the user needs to be authorized.
+	 * First, checks if a project with the given name already exists.
+	 * If not, then the new project gets stored into the database.
+	 * @param inputProject JSON representation of the project to store (containing name and access token of user needed to create Requirements Bazaar category).
+	 * @return Response containing the status code (and a message or the created project).
+	 */
+	@GET
+	@Path("/")
+	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
+	@ApiResponses(value = {
+			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, projects fetched."),
+			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.")
+	})
+	public Response getProjects() {
+	    Agent agent = Context.getCurrent().getMainAgent();
+		String identifier = projects_prefix + agent.toString();
+		JSONObject result = new JSONObject();
+		try {
+			try {
+				Envelope stored = Context.get().requestEnvelope(identifier, agent);
+				ProjectContainer cc = (ProjectContainer) stored.getContent();
+				/*	Set<String> groupNames = cc.getGroups().keySet();
+				String groupId = "";
+				for (String s : groupNames) {
+					try {
+						groupId = cc.getGroupId(s);
+						Context.get().requestAgent(groupId);
+						result.put(groupId, s);
+					} catch (Exception e) {
+						// Skip agents who are not known or groups wihtout access.
+					}
+				}*/
+				result.put("projects", cc.getUserProjects());
+				System.out.println(cc.getUserProjects());
+				return Response.status(Status.OK).entity(result).build();
+			} catch (EnvelopeNotFoundException e) {
+				return Response.status(Status.OK).entity("No projects found").build();
+			}
+		} catch (Exception e) {
+			// write error to logfile and console
+			// Couldnt build due to logging error so just left it out for now...
+			//logger.log(Level.SEVERE, "Can't persist to network storage!", e);
+		}
+		return Response.status(Status.BAD_REQUEST).entity("Unknown error occured.").build();
 	}
 }

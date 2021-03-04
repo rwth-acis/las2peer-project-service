@@ -163,7 +163,7 @@ export class ProjectList extends LitElement {
     super();
     this.groups = [];
     this.projects = [];
-    this.listedProjects = [];
+    this.listedProjects = ["sss"];
     this.projectsOnlineUser = new Object();
     // use a default value for project service URL for local testing
     this.projectServiceURL = "http://127.0.0.1:8080";
@@ -293,6 +293,7 @@ export class ProjectList extends LitElement {
     }).then(data => {
       // store loaded groups
     this.groups = Object.values(data);
+    console.log(this.groups);
     // only open popup once group loaded
     this.shadowRoot.getElementById("dialog-create-project").open();
     // disable create button until user entered a project name
@@ -359,7 +360,7 @@ export class ProjectList extends LitElement {
   showProjects(allProjects) {
     // set loading to true
     this.projectsLoading = true;
-
+    console.log("sasaq");
     // clear current project list
     /*this.projects = [];
     this.listedProjects = [];
@@ -383,26 +384,28 @@ export class ProjectList extends LitElement {
     // only send authHeader when not all projects should be shown, but only the
     // one from the current user
     const headers = allProjects? undefined : Auth.getAuthHeader();
-
+*/
     fetch(this.projectServiceURL + "/projects", {
       method: "GET",
-      headers: headers
+      headers: Auth.getAuthHeaderWithSub()
     }).then(response => {
       if(!response.ok) throw Error(response.status);
-      return response.json();
+      return response;
     }).then(data => {
+      console.log("data");
+      console.log(data);
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
 
       // store loaded projects
-      this.projects = data;
+      this.projects = [];
       // set projects that should be shown (currently all)
-      this.listedProjects = data;
+      this.listedProjects = [];
 
       // load online users
-      for(let i in this.projects) {
+  /*    for(let i in this.projects) {
         this.loadListOfProjectOnlineUsers(this.projects[i].id);
-      }
+      }*/
     }).catch(error => {
       if(error.message == "401") {
         // user is not authorized
@@ -412,7 +415,7 @@ export class ProjectList extends LitElement {
       } else {
         console.log(error);
       }
-    });*/
+    });
   }
 
   /**
@@ -489,21 +492,9 @@ export class ProjectList extends LitElement {
         console.log(data);
         const users = Object.values(data);
         const newProject = {"id":this.projects.length, "name":projectName, "Linked Group":linkedGroup, "Group Members":users};
-
-        // the following code is just cherry picked from the commented stuff for testing purposes..
-        this.projects.push(newProject);
-        this.listedProjects.push(newProject);
-        this.shadowRoot.getElementById("dialog-loading").close();
-        this.shadowRoot.getElementById("toast-success").show();
-        this.resetCreateProjectDialog();
-        console.log("please" + this.projects);
-        this.showProjects(false);
-        this.tabSelected = 0;
-            this.shadowRoot.getElementById("my-and-all-projects").selected = 0;
-        console.log("please" + this.projects);
-        /*  fetch(Static.ProjectManagementServiceURL + "/projects", {
+          fetch(this.projectServiceURL + "/projects", {
           method: "POST",
-          headers: Auth.getAuthHeader(),
+          headers:  Auth.getAuthHeaderWithSub(),
           body: JSON.stringify({
             "name": projectName,
             "access_token": Auth.getAccessToken(),
@@ -511,6 +502,7 @@ export class ProjectList extends LitElement {
             "users": users
           })
         }).then(response => {
+          console.log(response);
           // close loading dialog
           this.shadowRoot.getElementById("dialog-loading").close();
 
@@ -534,7 +526,7 @@ export class ProjectList extends LitElement {
             location.reload();
           }
           // TODO: check what happens when access_token is missing in localStorage
-        });*/
+        });
       });
     }
     

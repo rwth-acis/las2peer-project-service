@@ -64,7 +64,7 @@ public class Project {
     /**
      * Users that are part of the project.
      */
-    private ArrayList<Agent> users;
+    private ArrayList<String> users;
     
     /**
      * Assigns a role to every user.
@@ -100,11 +100,11 @@ public class Project {
     	for(int i = 0; i < ((JSONArray) project.get("users")).size() ; i++) {
     		String userName = ((JSONArray) project.get("users")).get(i).toString();
     		try {
-    		Serializable dd = Context.get().invoke("i5.las2peer.connectors.webConnector.handler", "handleGetAgent", "", userName, "");
-    		
-    		System.out.println(dd);
-    		} catch (ServiceNotFoundException | ServiceNotAvailableException | InternalServiceException | ServiceMethodNotFoundException | ServiceInvocationFailedException | ServiceAccessDeniedException | ServiceNotAuthorizedException q) {
-    			System.out.println(q);
+    			String userId = Context.get().getUserAgentIdentifierByLoginName(userName);	
+	    		System.out.println(userId);
+	    		this.users.add(userId);
+    		} catch (Exception q) {
+    			System.out.println(q + "User does not exist?");
     		}
     		/*	if(user != true) {
     			
