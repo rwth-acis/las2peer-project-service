@@ -8,6 +8,8 @@ import '@polymer/paper-dropdown-menu/paper-dropdown-menu.js';
 import '@polymer/paper-item/paper-item.js';
 import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-tabs';
+import '@polymer/iron-icon/iron-icon.js';
+import '@polymer/iron-icons/social-icons.js';
 
 import Auth from './util/auth';
 
@@ -90,6 +92,12 @@ export class ProjectList extends LitElement {
     }
     paper-tabs {
       --paper-tabs-selection-bar-color: rgb(30,144,255);
+    }
+    .icon {
+      color: #000000;
+    }
+    .icon:hover {
+      color: #7c7c7c;
     }
     `;
   }
@@ -196,6 +204,8 @@ export class ProjectList extends LitElement {
                   ${this.getListOfProjectOnlineUsers(project.id) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
                   <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.id)}</p>
                   <slot name="project-${project.id}"></slot>
+                  <iron-icon icon="social:group" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
+                    @click=${() => this.openConnectedGroupDialog(project)}></iron-icon>
                 </div>
               </div>
             </paper-card>
@@ -203,7 +213,6 @@ export class ProjectList extends LitElement {
       </div>
       
       <!-- Dialog for creating new projects. -->
-      <!-- TODO: this does not contain groups yet -->
       <paper-dialog id="dialog-create-project">
         <h2>Create a Project</h2>
         
@@ -219,6 +228,26 @@ export class ProjectList extends LitElement {
         <div class="buttons">
           <paper-button @click="${this._closeCreateProjectDialogClicked}" dialog-dismiss>Cancel</paper-button>
           <paper-button id="dialog-button-create" @click="${this._createProject}" dialog-confirm>Create</paper-button>
+        </div>
+      </paper-dialog>
+      
+      <paper-dialog id="dialog-connected-group">
+        <h2>Connected Group</h2>
+        <p>The project <span id="connected-group-project-name">Project name</span> is connected to the las2peer group:</p>
+        <div style="display: flex">
+          <p><span id="connected-group-name">Group name</span></p>
+          <paper-dropdown-menu style="display: none" id="input-edit-group-name" label="Link Group to Project:" 
+        ><paper-listbox slot="dropdown-content" class="dropdown-content">
+          ${this.groups.map(group => html`
+          <paper-item value="${group}">${group}</paper-item>
+            `)}
+        </paper-listbox>
+        </paper-dropdown-menu>
+          <iron-icon icon="editor:mode-edit" class="icon" style="margin-top: auto; margin-bottom: auto; margin-left: 1em"
+            @click=${this._onEditConnectedGroupClicked}></iron-icon>
+        </div>
+        <div class="buttons">
+          <paper-button dialog-confirm>OK</paper-button>
         </div>
       </paper-dialog>
       
@@ -248,6 +277,9 @@ export class ProjectList extends LitElement {
    * @private
    */
   _onCreateProjectButtonClicked() {
+    // clear input fields of dialog
+    this.resetCreateProjectDialog();
+
     // add statusbar to be able to get user infos for this step
     console.log(this.contactServiceURL);
     fetch(this.contactServiceURL + "/groups", {
@@ -463,7 +495,7 @@ export class ProjectList extends LitElement {
         this.listedProjects.push(newProject);
         this.shadowRoot.getElementById("dialog-loading").close();
         this.shadowRoot.getElementById("toast-success").show();
-        this.shadowRoot.getElementById("input-project-name").value = "";
+        this.resetCreateProjectDialog();
         console.log("please" + this.projects);
         this.showProjects(false);
         this.tabSelected = 0;
@@ -524,6 +556,46 @@ export class ProjectList extends LitElement {
       s = s.substr(0,s.length-1);
     }
     return s;
+  }
+
+  /**
+   * Gets called when the user clicks on the edit-button for the group name in the "connected-group" dialog.
+   * @private
+   */
+  _onEditConnectedGroupClicked() {
+    // hide current group name paragraph element
+    this.shadowRoot.getElementById("connected-group-name").style.setProperty("display", "none");
+
+    // show dropdown menu to select a different group, therefore remove display: none
+    this.shadowRoot.getElementById("input-edit-group-name").style.removeProperty("display");
+  }
+
+  /**
+   * Gets called when the "Group" icon of one of the displayed projects gets clicked and opens a dialog with
+   * information on the group which is currently connected to the project.
+   * @param project
+   */
+  openConnectedGroupDialog(project) {
+    // reset the dialog
+    this.shadowRoot.getElementById("connected-group-name").style.removeProperty("display");
+    this.shadowRoot.getElementById("input-edit-group-name").style.setProperty("display", "none");
+
+    // TODO: show correct project name and group name
+    this.shadowRoot.getElementById("connected-group-project-name").innerText = project.name;
+    this.shadowRoot.getElementById("connected-group-name").innerText = "Group name";
+
+    // open the dialog
+    this.shadowRoot.getElementById("dialog-connected-group").open();
+  }
+
+  /**
+   * Resets the input fields of the "Create Project" dialog.
+   * Clears the input for the project name and resets the dropdown menu for the group selection.
+   */
+  resetCreateProjectDialog() {
+    // clear previous input (might not exist yet if dialog was never opened before, but just clear it anyway)
+    this.shadowRoot.getElementById("input-project-name").value = "";
+    this.shadowRoot.getElementById("input-group-name")._setSelectedItem(null);
   }
 }
 
