@@ -221,7 +221,7 @@ export class ProjectList extends LitElement {
         <paper-dropdown-menu id="input-group-name" label="Link Group to Project:" 
         ><paper-listbox slot="dropdown-content" class="dropdown-content">
           ${this.groups.map(group => html`
-          <paper-item value="${group}">${group}</paper-item>
+          <paper-item value="${group.id}">${group.name}</paper-item>
             `)}
         </paper-listbox>
         </paper-dropdown-menu>
@@ -239,7 +239,7 @@ export class ProjectList extends LitElement {
           <paper-dropdown-menu style="display: none" id="input-edit-group-name" label="Link Group to Project:" 
         ><paper-listbox slot="dropdown-content" class="dropdown-content">
           ${this.groups.map(group => html`
-          <paper-item value="${group}">${group}</paper-item>
+          <paper-item value="${group.id}">${group.name}</paper-item>
             `)}
         </paper-listbox>
         </paper-dropdown-menu>
@@ -292,12 +292,22 @@ export class ProjectList extends LitElement {
       return response.json();
     }).then(data => {
       // store loaded groups
-    this.groups = Object.values(data);
-    console.log(this.groups);
-    // only open popup once group loaded
-    this.shadowRoot.getElementById("dialog-create-project").open();
-    // disable create button until user entered a project name
-    this.shadowRoot.getElementById("dialog-button-create").disabled = true;
+      // groups given by contact service as a JSONObject with key = group agent id and value = group name
+      // we create an array of objects with id and name attribute out of it
+      this.groups = [];
+      for(let key of Object.keys(data)) {
+        let group = {
+          "id": key,
+          "name": data[key]
+        };
+        this.groups.push(group);
+      }
+
+      console.log(this.groups);
+      // only open popup once group loaded
+      this.shadowRoot.getElementById("dialog-create-project").open();
+      // disable create button until user entered a project name
+      this.shadowRoot.getElementById("dialog-button-create").disabled = true;
     }).catch(error => {
       console.log("ssdlkjidhaidjkol" + error.message);
       if(error.message == "401") {
@@ -476,7 +486,9 @@ export class ProjectList extends LitElement {
    */
   _createProject() {
     const projectName = this.shadowRoot.getElementById("input-project-name").value;
-    const linkedGroup = this.shadowRoot.getElementById("input-group-name").value;
+    const linkedGroupName = this.shadowRoot.getElementById("input-group-name").value;
+    const linkedGroup = this.groups.find(group => group.name == linkedGroupName);
+
     // close dialog (then also the button is not clickable and user cannot create project twice or more often)
     // important: get projectName before closing dialog, because when closing the dialog the input field gets cleared
     this._closeCreateProjectDialogClicked();
@@ -486,7 +498,7 @@ export class ProjectList extends LitElement {
 
     // currently fetches members from contact service but does not check whether project already exists (code is there but commented)
     if(projectName) {
-      fetch(this.contactServiceURL + "/groups/" + linkedGroup + "/member", {
+      fetch(this.contactServiceURL + "/groups/" + linkedGroupName + "/member", {
         method: "GET",
         headers: Auth.getAuthHeaderWithSub() 
       }).then( response => {
@@ -497,7 +509,7 @@ export class ProjectList extends LitElement {
       }).then(data => {
         console.log(data);
         const users = Object.values(data);
-        const newProject = {"id":this.projects.length, "name":projectName, "Linked Group":linkedGroup, "Group Members":users};
+        //const newProject = {"id":this.projects.length, "name":projectName, "Linked Group":linkedGroup, "Group Members":users};
           fetch(this.projectServiceURL + "/projects", {
           method: "POST",
           headers:  Auth.getAuthHeaderWithSub(),

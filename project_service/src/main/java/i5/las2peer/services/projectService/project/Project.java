@@ -62,6 +62,11 @@ public class Project {
      */
     private String groupName;
     
+    /**
+     * Identifier of the group linked to the project.
+     */
+    private String groupIdentifier;
+    
     
     /**
      * Creates a project object from the given JSON string.
@@ -82,7 +87,9 @@ public class Project {
     	this.users = new ArrayList<>();
     //	this.users.add(creator);
     	// group and users to project from said group
-    	this.groupName = (String) project.get("linkedGroup");
+    	JSONObject linkedGroup = (JSONObject) project.get("linkedGroup");
+    	this.groupName = (String) linkedGroup.get("name");
+    	this.groupIdentifier = (String) linkedGroup.get("id");
     	for(int i = 0; i < ((JSONArray) project.get("users")).size() ; i++) {
     		String userName = ((JSONArray) project.get("users")).get(i).toString();
     		try {
@@ -814,11 +821,19 @@ public class Project {
 	}
 	
 	/**
-	 * Getter for the name of the project.
-	 * @return Name of the project.
+	 * Getter for the name of the group connected to the project.
+	 * @return Name of the group.
 	 */
 	public String getGroupName() {
 		return groupName;
+	}
+	
+	/**
+	 * Getter for the identifier of the group connected to the project.
+	 * @return Identifier of the group.
+	 */
+	public String getGroupIdentifier() {
+		return groupIdentifier;
 	}
 	
 	/**
