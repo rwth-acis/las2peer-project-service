@@ -14,22 +14,34 @@ public class ProjectContainer implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private HashSet<Project> userProjects;
+	private HashSet<String> userProjects;
+	
+	private HashMap<String, String> allProjects;
 
 	public ProjectContainer() {
-		userProjects = new HashSet<Project>();
+		userProjects = new HashSet<String>();
+		allProjects = new HashMap<String, String>();
 	}
 
-	public void addProject(Project p) {
-		userProjects.add(p);
-	}
 
-	public HashSet<Project> getUserProjects() {
+	public HashSet<String> getUserProjects() {
 		return userProjects;
+	}
+	
+	public void addProject(Project p) {
+		allProjects.put(p.getName(), p.getGroupName());
 	}
 
 	public boolean removeProject(Project p) {
 		return userProjects.remove(p);
+	}
+	
+	public HashSet<String> getProjectGroups() {
+		return (HashSet<String>) allProjects.values();
+	}
+	
+	public HashMap<String, String> getAllProjects() {
+		return allProjects;
 	}
 
 }

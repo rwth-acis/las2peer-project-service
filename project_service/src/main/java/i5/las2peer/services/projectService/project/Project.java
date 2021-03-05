@@ -85,7 +85,7 @@ public class Project {
      * @param jsonProject JSON representation of the project to store.
      * @throws ParseException If parsing went wrong.
      */
-    public Project(Agent creator, String jsonProject) throws ParseException, ServiceNotFoundException, ServiceNotAvailableException, InternalServiceException {
+    public Project(Agent creator, String jsonProject) throws ParseException {
     	try {
     	JSONObject project = (JSONObject) JSONValue.parseWithException(jsonProject);
     
@@ -825,6 +825,14 @@ public class Project {
 	 */
 	public ArrayList<Role> getRoles() {
 		return roles;
+	}
+	
+	/**
+	 * Getter for the name of the project.
+	 * @return Name of the project.
+	 */
+	public String getGroupName() {
+		return groupName;
 	}
 	
 	/**

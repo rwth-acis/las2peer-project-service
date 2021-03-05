@@ -390,17 +390,23 @@ export class ProjectList extends LitElement {
       headers: Auth.getAuthHeaderWithSub()
     }).then(response => {
       if(!response.ok) throw Error(response.status);
-      return response;
+      return response.json();
     }).then(data => {
       console.log("data");
       console.log(data);
+      console.log("Projects are" + Object.keys(data.projects));
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
-
+      var projectNames = Object.keys(data.projects);
+      var fetchedProjects=[];
+      var projectGroups = Object.values(data.projects);
+      for(var i = 0; i < projectNames.length ; i++){
+          fetchedProjects.push({"name":projectNames[i], "id":projectNames[i], "groupName":projectGroups[i]});
+      }
       // store loaded projects
-      this.projects = [];
+      this.projects = fetchedProjects;
       // set projects that should be shown (currently all)
-      this.listedProjects = [];
+      this.listedProjects = fetchedProjects;
 
       // load online users
   /*    for(let i in this.projects) {
@@ -574,7 +580,7 @@ export class ProjectList extends LitElement {
 
     // TODO: show correct project name and group name
     this.shadowRoot.getElementById("connected-group-project-name").innerText = project.name;
-    this.shadowRoot.getElementById("connected-group-name").innerText = "Group name";
+    this.shadowRoot.getElementById("connected-group-name").innerText = project.groupName;
 
     // open the dialog
     this.shadowRoot.getElementById("dialog-connected-group").open();

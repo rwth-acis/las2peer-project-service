@@ -3,6 +3,7 @@ package i5.las2peer.services.projectService;
 import java.net.HttpURLConnection;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.HashMap;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -115,10 +116,10 @@ public class ProjectService extends RESTService {
     			String id = "";
     			// didnt do much thinking in the following part but rather tried copying the code from contactservice just to make it work, will need to put some 
     			// more thought into it once it works :P
-    			String identifier = projects_prefix + "_" + agent.toString();
-    			String identifier2 = projects_prefix;
     			ProjectContainer cc = null;
 				Project project = new Project(agent, inputProject);
+    			String identifier = projects_prefix + "_" + project.getName();
+    			String identifier2 = projects_prefix;
 				try {
 					try {
 						Context.get().requestEnvelope(identifier);
@@ -130,12 +131,30 @@ public class ProjectService extends RESTService {
 						//groupAgent = Context.get().createGroupAgent(members, name);
 						cc.addProject(project);
 						System.out.println("Creating envelope");
-						env = Context.get().createEnvelope(identifier, agent);
+						env = Context.get().createEnvelope(identifier, Context.get().getServiceAgent());
 						System.out.println("Setting envelope content");
 						env.setContent(cc);
 						System.out.println("Storing emnvelope");
-						Context.get().storeEnvelope(env);
+						Context.get().storeEnvelope(env, Context.get().getServiceAgent());
 						System.out.println("Storing complete");
+					}
+					
+					// writing to user
+					try {
+						// try to add group to group list
+						env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
+						cc = (ProjectContainer) env2.getContent();
+						cc.addProject(project);
+						env2.setContent(cc);
+						Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
+					} catch (EnvelopeNotFoundException e) {
+						// create new group list
+						cc = new ProjectContainer();
+						env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
+						env2.setPublic();
+						cc.addProject(project);
+						env2.setContent(cc);
+						Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
 					}
 				} catch (Exception e) {
 					// write error to logfile and console
@@ -144,7 +163,7 @@ public class ProjectService extends RESTService {
 					return Response.status(Status.BAD_REQUEST).entity(e + "Error").build();
 				}
 				//pleasee ignore this for now :)
-			} catch (ParseException | ServiceNotFoundException | ServiceNotAvailableException | InternalServiceException e) {
+			} catch (ParseException  e) {
 			//	logger.printStackTrace(e);
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).build();
 			} 
@@ -163,6 +182,7 @@ public class ProjectService extends RESTService {
 	 */
 	@GET
 	@Path("/")
+	@Produces(MediaType.APPLICATION_JSON)
 	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
 	@ApiResponses(value = {
 			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, projects fetched."),
@@ -171,25 +191,15 @@ public class ProjectService extends RESTService {
 	})
 	public Response getProjects() {
 	    Agent agent = Context.getCurrent().getMainAgent();
-		String identifier = projects_prefix + agent.toString();
+		String identifier = projects_prefix;
 		JSONObject result = new JSONObject();
 		try {
 			try {
-				Envelope stored = Context.get().requestEnvelope(identifier, agent);
+				Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
 				ProjectContainer cc = (ProjectContainer) stored.getContent();
-				/*	Set<String> groupNames = cc.getGroups().keySet();
-				String groupId = "";
-				for (String s : groupNames) {
-					try {
-						groupId = cc.getGroupId(s);
-						Context.get().requestAgent(groupId);
-						result.put(groupId, s);
-					} catch (Exception e) {
-						// Skip agents who are not known or groups wihtout access.
-					}
-				}*/
-				result.put("projects", cc.getUserProjects());
-				System.out.println(cc.getUserProjects());
+				HashMap<String, String> projects = cc.getAllProjects();
+				result.put("projects", projects);
+				System.out.println(result);
 				return Response.status(Status.OK).entity(result).build();
 			} catch (EnvelopeNotFoundException e) {
 				return Response.status(Status.OK).entity("No projects found").build();
