@@ -1,8 +1,11 @@
 package i5.las2peer.services.projectService;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+
 import i5.las2peer.services.projectService.project.Project;
 
 /**
@@ -16,11 +19,11 @@ public class ProjectContainer implements Serializable {
 
 	private HashSet<String> userProjects;
 	
-	private HashMap<String, String> allProjects;
+	private HashMap<String, Project> allProjects;
 
 	public ProjectContainer() {
-		userProjects = new HashSet<String>();
-		allProjects = new HashMap<String, String>();
+		userProjects = new HashSet<>();
+		allProjects = new HashMap<>();
 	}
 
 
@@ -29,19 +32,15 @@ public class ProjectContainer implements Serializable {
 	}
 	
 	public void addProject(Project p) {
-		allProjects.put(p.getName(), p.getGroupName());
+		allProjects.put(p.getName(), p);
 	}
 
 	public boolean removeProject(Project p) {
-		return userProjects.remove(p);
+		return userProjects.remove(p.getName());
 	}
 	
-	public HashSet<String> getProjectGroups() {
-		return (HashSet<String>) allProjects.values();
-	}
-	
-	public HashMap<String, String> getAllProjects() {
-		return allProjects;
+	public List<Project> getAllProjects() {
+		return new ArrayList<>(allProjects.values());
 	}
 
 }

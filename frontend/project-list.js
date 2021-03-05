@@ -404,19 +404,14 @@ export class ProjectList extends LitElement {
     }).then(data => {
       console.log("data");
       console.log(data);
-      console.log("Projects are" + Object.keys(data.projects));
+      console.log("Projects are", data.projects);
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
-      var projectNames = Object.keys(data.projects);
-      var fetchedProjects=[];
-      var projectGroups = Object.values(data.projects);
-      for(var i = 0; i < projectNames.length ; i++){
-          fetchedProjects.push({"name":projectNames[i], "id":projectNames[i], "groupName":projectGroups[i]});
-      }
+
       // store loaded projects
-      this.projects = fetchedProjects;
+      this.projects = data.projects;
       // set projects that should be shown (currently all)
-      this.listedProjects = fetchedProjects;
+      this.listedProjects = data.projects;
 
       // load online users
   /*    for(let i in this.projects) {

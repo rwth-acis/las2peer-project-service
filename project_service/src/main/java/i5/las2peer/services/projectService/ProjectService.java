@@ -1,8 +1,8 @@
 package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -30,8 +30,7 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.SwaggerDefinition;
-import net.minidev.json.JSONObject;
-import net.minidev.json.JSONValue;
+import org.json.simple.JSONObject;
 
 import org.json.simple.parser.ParseException;
 
@@ -182,28 +181,33 @@ public class ProjectService extends RESTService {
 			Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
 			ProjectContainer cc = (ProjectContainer) stored.getContent();
 			// read all projects from the project list
-			HashMap<String, String> projects = cc.getAllProjects();
+			List<Project> projects = cc.getAllProjects();
 			// create another hashmap for storing the projects, where the requesting agent has access to
-			HashMap<String, String> projectsWithAccess = new HashMap<>();
+			List<Project> projectsWithAccess = new ArrayList<>();
 			
 			// check which of all projects the user has access to
-			for(Map.Entry<String, String> entry : projects.entrySet()) {
+			for(Project project : projects) {
 				//String projectJSON = entry.getValue();
 				//JSONObject project = (JSONObject) JSONValue.parse(projectJSON);
-				String groupId = "";
+				String groupId = project.getGroupIdentifier();
 				// TODO: currently, the entries of the "projects" hashmap do not contain the group id (but only project name and group name)
 				// To check whether the user is a member of the group, we need the group identifier
 				try {
 				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
-				    projectsWithAccess.put(entry.getKey(), entry.getValue());
+				    projectsWithAccess.add(project);
 				} catch(AgentAccessDeniedException e) {
 					// user is not allowed to access group agent => user is no group member
 				}
 				
 			}
 			
-			result.put("projects", projectsWithAccess);
-			System.out.println(result);
+			List<JSONObject> projectsWithAccessJSON = new ArrayList<>();
+			for(Project project : projectsWithAccess) {
+				projectsWithAccessJSON.add(project.toJSONObject());
+			}
+			
+			result.put("projects", projectsWithAccessJSON);
+			//System.out.println(result);
 			return Response.status(Status.OK).entity(result).build();
 		} catch (EnvelopeNotFoundException e) {
 			return Response.status(Status.OK).entity("No projects found").build();
@@ -211,7 +215,7 @@ public class ProjectService extends RESTService {
 			// write error to logfile and console
 			// Couldnt build due to logging error so just left it out for now...
 			//logger.log(Level.SEVERE, "Can't persist to network storage!", e);
+			return Response.status(Status.BAD_REQUEST).entity("Unknown error occured: " + e.getMessage()).build();
 		}
-		return Response.status(Status.BAD_REQUEST).entity("Unknown error occured.").build();
 	}
 }

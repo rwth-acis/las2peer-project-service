@@ -1,5 +1,6 @@
 package i5.las2peer.services.projectService.project;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -29,13 +30,13 @@ import i5.las2peer.services.projectManagementService.github.GitHubProject;
  * to JSON. Also provides means to persist the object to a database.
  * TODO: check if this javadoc is still correct later
  */
-public class Project {
+public class Project implements Serializable {
 	
 	/**
 	 * Id of the project.
 	 * Initially set to -1 if project is not persisted yet.
 	 */
-    private int id = -1;
+    //private int id = -1;
     
     /**
      * Name of the project.
@@ -45,17 +46,17 @@ public class Project {
     /**
      * Roles that belong to the project.
      */
-    private ArrayList<Role> roles;
+    //private ArrayList<Role> roles;
     
     /**
      * Users that are part of the project.
      */
-    private ArrayList<String> users;
+    //private ArrayList<String> users;
     
     /**
      * Assigns a role to every user.
      */
-    private HashMap<Agent, Role> roleAssignment;
+    //private HashMap<Agent, Role> roleAssignment;
     
     /**
      * Group linked to Project.
@@ -66,6 +67,12 @@ public class Project {
      * Identifier of the group linked to the project.
      */
     private String groupIdentifier;
+    
+    public Project(String name, String groupName, String groupIdentifier) {
+    	this.name = name;
+    	this.groupName = groupName;
+    	this.groupIdentifier = groupIdentifier;
+    }
     
     
     /**
@@ -84,7 +91,7 @@ public class Project {
     	this.name = (String) project.get("name");
     	
     	
-    	this.users = new ArrayList<>();
+    	//this.users = new ArrayList<>();
     //	this.users.add(creator);
     	// group and users to project from said group
     	JSONObject linkedGroup = (JSONObject) project.get("linkedGroup");
@@ -95,7 +102,7 @@ public class Project {
     		try {
     			String userId = Context.get().getUserAgentIdentifierByLoginName(userName);	
 	    		System.out.println(userId);
-	    		this.users.add(userId);
+	    		//this.users.add(userId);
     		} catch (Exception q) {
     			System.out.println(q + "User does not exist?");
     		}
@@ -103,7 +110,7 @@ public class Project {
     			
     		}*/
     	}
-    	this.roleAssignment = new HashMap<>();
+    	//this.roleAssignment = new HashMap<>();
     	} catch( ParseException e ) {
     		e.printStackTrace();
     	}
@@ -307,9 +314,9 @@ public class Project {
 	 * @param user User object to search the role for.
 	 * @return Role object of the user.
 	 */
-	public Role getRoleByUser(Agent user) {
+	/*public Role getRoleByUser(Agent user) {
 		return this.roleAssignment.get(user);
-	}
+	}*/
 	
 	/**
 	 * Persists a project.
@@ -461,44 +468,9 @@ public class Project {
 		JSONObject jsonProject = new JSONObject();
 		
 		// put attributes
-		jsonProject.put("id", this.id);
 		jsonProject.put("name", this.name);
-		
-		// put roles
-		JSONArray jsonRoles = new JSONArray();
-		for(Role role : roles) {
-			jsonRoles.add(role.toJSONObject());
-		}
-		jsonProject.put("roles", jsonRoles);
-		
-		// put users
-		// this should also include the role of each user; since the role is not stored in
-		// the User object itself (because it does not only depend on the user, but on
-		// the project too) the role needs to be added manually
-		JSONArray jsonUsers = new JSONArray();
-	/*	for(UserAgent user : users) {
-			JSONObject jsonUser = user.toJSONObject(false);
-			
-			// find out id of the role which is assigned to the user
-			int roleId = roleAssignment.get(user).getId();
-			jsonUser.put("roleId", roleId);
-			
-			jsonUsers.add(jsonUser);
-		}*/
-		jsonProject.put("users", jsonUsers);
-		
-		// put components
-		JSONArray jsonComponents = new JSONArray();
-		jsonProject.put("components", jsonComponents);
-		
-		// put dependencies
-		JSONArray jsonDependencies = new JSONArray();
-
-		
-		// put external dependencies
-		JSONArray jsonExternalDependencies = new JSONArray();
-
-		jsonProject.put("externalDependencies", jsonExternalDependencies);
+		jsonProject.put("groupName", this.groupName);
+		jsonProject.put("groupIdentifier", this.groupIdentifier);
 
 		return jsonProject;
 	}
@@ -800,32 +772,32 @@ public class Project {
 	 * has not been stored to the database yet.
 	 * @return Id of the project.
 	 */
-	public int getId() {
+	/*public int getId() {
 	    return id;
-	}
+	}*/
 	
 	/**
 	 * Getter for the name of the project.
 	 * @return Name of the project.
 	 */
 	public String getName() {
-		return name;
+		return this.name;
 	}
 	
 	/**
 	 * Getter for the list of roles of the project.
 	 * @return ArrayList of Role objects that belong to the project.
 	 */
-	public ArrayList<Role> getRoles() {
+	/*public ArrayList<Role> getRoles() {
 		return roles;
-	}
+	}*/
 	
 	/**
 	 * Getter for the name of the group connected to the project.
 	 * @return Name of the group.
 	 */
 	public String getGroupName() {
-		return groupName;
+		return this.groupName;
 	}
 	
 	/**
@@ -833,7 +805,7 @@ public class Project {
 	 * @return Identifier of the group.
 	 */
 	public String getGroupIdentifier() {
-		return groupIdentifier;
+		return this.groupIdentifier;
 	}
 	
 	/**
