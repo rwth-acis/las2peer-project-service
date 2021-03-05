@@ -1,29 +1,15 @@
 package i5.las2peer.services.projectService.project;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.io.Serializable;
 
 import org.json.simple.JSONValue;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
-import  org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.security.Agent;
-import i5.las2peer.api.execution.ServiceNotFoundException;
-import i5.las2peer.api.execution.ServiceNotAvailableException;
-import i5.las2peer.api.execution.InternalServiceException;
-import i5.las2peer.api.execution.ServiceMethodNotFoundException;
-import i5.las2peer.api.execution.ServiceInvocationFailedException;
-import i5.las2peer.api.execution.ServiceAccessDeniedException;
-import i5.las2peer.api.execution.ServiceNotAuthorizedException;
 
 // Left lots of commented stuff in case we need it at a later time, will probably get deleted later on if not needed
 /*import i5.las2peer.services.projectManagementService.component.Component;

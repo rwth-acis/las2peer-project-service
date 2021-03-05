@@ -1,14 +1,11 @@
 package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
-import java.util.Set;
-import java.util.logging.Level;
 import java.util.HashMap;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -17,51 +14,26 @@ import javax.ws.rs.core.Response.Status;
 import i5.las2peer.api.Context;
 import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AnonymousAgent;
-import i5.las2peer.api.security.GroupAgent;
 import i5.las2peer.api.logging.MonitoringEvent;
 import i5.las2peer.api.persistency.Envelope;
+import i5.las2peer.api.persistency.EnvelopeAccessDeniedException;
 import i5.las2peer.api.persistency.EnvelopeNotFoundException;
+import i5.las2peer.api.persistency.EnvelopeOperationFailedException;
 import i5.las2peer.restMapper.RESTService;
 import i5.las2peer.restMapper.annotations.ServicePath;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
-import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
 import net.minidev.json.JSONObject;
-import i5.las2peer.connectors.webConnector.client.ClientResponse;
-import i5.las2peer.connectors.webConnector.client.MiniClient;
 import org.json.simple.parser.ParseException;
-
-import java.io.Serializable;
-
-
 
 import javax.ws.rs.Consumes;
 
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.Connection;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.Consumes;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.GitHubException;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.JSONObject;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.ParseException;
 import i5.las2peer.services.projectService.project.Project;
-import i5.las2peer.services.projectService.ProjectContainer;
-import i5.las2peer.services.projectService.exception.ProjectNotFoundException;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.ReqBazException;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.SQLException;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.String;
-import i5.las2peer.services.projectService.project.User;
-//import project_management_service.src.main.java.i5.las2peer.services.projectManagementService.auth.Agent;
 import i5.las2peer.api.execution.ServiceNotFoundException;
-import i5.las2peer.api.execution.ServiceNotAvailableException;
-import i5.las2peer.api.execution.InternalServiceException;
-import i5.las2peer.api.execution.ServiceMethodNotFoundException;
-import i5.las2peer.api.execution.ServiceInvocationFailedException;
-import i5.las2peer.api.execution.ServiceAccessDeniedException;
-import i5.las2peer.api.execution.ServiceNotAuthorizedException;
 
 /**
  * las2peer-project-service
@@ -84,18 +56,19 @@ public class ProjectService extends RESTService {
 	protected void initResources() {
 		getResourceConfig().register(this);
 	}
+	
 	/**
 	 * Creates a new project in the pastry storage.
 	 * Therefore, the user needs to be authorized.
 	 * First, checks if a project with the given name already exists.
-	 * If not, then the new project gets stored into the database.
+	 * If not, then the new project gets stored into the pastry storage.
 	 * @param inputProject JSON representation of the project to store (containing name and access token of user needed to create Requirements Bazaar category).
 	 * @return Response containing the status code (and a message or the created project).
 	 */
 	@POST
 	@Path("/")
 	@Consumes(MediaType.TEXT_PLAIN)
-	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
+	@ApiOperation(value = "Creates a new project in the pastry storage if no project with the same name is already existing.")
 	@ApiResponses(value = {
 			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, project created."),
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
@@ -109,76 +82,79 @@ public class ProjectService extends RESTService {
 		if(Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		} else {
-            try {
-            	Agent agent = Context.getCurrent().getMainAgent();
-            	Envelope env = null;
-    			Envelope env2 = null;
-    			String id = "";
-    			// didnt do much thinking in the following part but rather tried copying the code from contactservice just to make it work, will need to put some 
-    			// more thought into it once it works :P
-    			ProjectContainer cc = null;
-				Project project = new Project(agent, inputProject);
-    			String identifier = projects_prefix + "_" + project.getName();
-    			String identifier2 = projects_prefix;
+			Agent agent = Context.getCurrent().getMainAgent();
+			Envelope env = null;
+			Envelope env2 = null;
+			//String id = "";
+			Project project;
+			
+			try {
+				project = new Project(agent, inputProject);
+			} catch (ParseException e) {
+				// JSON project given with the request is not well formatted or some attributes are missing
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
+			}
+			
+			String identifier = projects_prefix + "_" + project.getName();
+			String identifier2 = projects_prefix;
+			
+			try {
+				Context.get().requestEnvelope(identifier);
+				// if requesting the envelope does not fail, then there already exists a project with the given name
+				return Response.status(HttpURLConnection.HTTP_CONFLICT).entity("Project already exists").build();
+			} catch (EnvelopeNotFoundException e) {
+				// requesting the envelope failed, thus no project with the given name exists and we can create it
+			} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+			
+			ProjectContainer cc = new ProjectContainer();
+			
+			// try to create group
+			//groupAgent = Context.get().createGroupAgent(members, name);
+			cc.addProject(project);
+			try {
+				System.out.println("Creating envelope");
+				// create envelope for project using the ServiceAgent
+				env = Context.get().createEnvelope(identifier, Context.get().getServiceAgent());
+				System.out.println("Setting envelope content");
+				// set the project container (which only contains the new project) as the envelope content
+				env.setContent(cc);
+				System.out.println("Storing emnvelope");
+				// store envelope using ServiceAgent
+				Context.get().storeEnvelope(env, Context.get().getServiceAgent());
+				System.out.println("Storing complete");
+				
+				// writing to user
 				try {
-					try {
-						Context.get().requestEnvelope(identifier);
-						return Response.status(Status.BAD_REQUEST).entity("Project already exists").build();
-					} catch (EnvelopeNotFoundException e) {
-						System.out.println("Enveleope did not exist creating...");
-						cc = new ProjectContainer();
-						// try to create group
-						//groupAgent = Context.get().createGroupAgent(members, name);
-						cc.addProject(project);
-						System.out.println("Creating envelope");
-						env = Context.get().createEnvelope(identifier, Context.get().getServiceAgent());
-						System.out.println("Setting envelope content");
-						env.setContent(cc);
-						System.out.println("Storing emnvelope");
-						Context.get().storeEnvelope(env, Context.get().getServiceAgent());
-						System.out.println("Storing complete");
-					}
-					
-					// writing to user
-					try {
-						// try to add group to group list
-						env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
-						cc = (ProjectContainer) env2.getContent();
-						cc.addProject(project);
-						env2.setContent(cc);
-						Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
-					} catch (EnvelopeNotFoundException e) {
-						// create new group list
-						cc = new ProjectContainer();
-						env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
-						env2.setPublic();
-						cc.addProject(project);
-						env2.setContent(cc);
-						Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
-					}
-				} catch (Exception e) {
-					// write error to logfile and console
-				//	logger.log(Level.SEVERE, "Can't persist to network storage!", e);
-				//	e.printStackTrace();
-					return Response.status(Status.BAD_REQUEST).entity(e + "Error").build();
+					// try to add project to project list
+					env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
+					cc = (ProjectContainer) env2.getContent();
+					cc.addProject(project);
+					env2.setContent(cc);
+					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
+				} catch (EnvelopeNotFoundException e) {
+					// create new project list
+					cc = new ProjectContainer();
+					env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
+					env2.setPublic();
+					cc.addProject(project);
+					env2.setContent(cc);
+					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
 				}
-				//pleasee ignore this for now :)
-			} catch (ParseException  e) {
-			//	logger.printStackTrace(e);
-				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).build();
-			} 
+			} catch (EnvelopeOperationFailedException | EnvelopeAccessDeniedException e1) {
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+			
+			return Response.status(HttpURLConnection.HTTP_OK).entity("Added Project To l2p Storage").build();
 		}
-		return Response.status(Status.OK).entity("Added Project To l2p Storage").build();
 	}
 	
 	
 	/**
 	 * Gets a user's projects
 	 * Therefore, the user needs to be authorized.
-	 * First, checks if a project with the given name already exists.
-	 * If not, then the new project gets stored into the database.
-	 * @param inputProject JSON representation of the project to store (containing name and access token of user needed to create Requirements Bazaar category).
-	 * @return Response containing the status code (and a message or the created project).
+	 * @return Response containing the status code
 	 */
 	@GET
 	@Path("/")
@@ -193,17 +169,15 @@ public class ProjectService extends RESTService {
 	    Agent agent = Context.getCurrent().getMainAgent();
 		String identifier = projects_prefix;
 		JSONObject result = new JSONObject();
-		try {
-			try {
-				Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
-				ProjectContainer cc = (ProjectContainer) stored.getContent();
-				HashMap<String, String> projects = cc.getAllProjects();
-				result.put("projects", projects);
-				System.out.println(result);
-				return Response.status(Status.OK).entity(result).build();
-			} catch (EnvelopeNotFoundException e) {
-				return Response.status(Status.OK).entity("No projects found").build();
-			}
+	    try {
+			Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
+			ProjectContainer cc = (ProjectContainer) stored.getContent();
+			HashMap<String, String> projects = cc.getAllProjects();
+			result.put("projects", projects);
+			System.out.println(result);
+			return Response.status(Status.OK).entity(result).build();
+		} catch (EnvelopeNotFoundException e) {
+			return Response.status(Status.OK).entity("No projects found").build();
 		} catch (Exception e) {
 			// write error to logfile and console
 			// Couldnt build due to logging error so just left it out for now...
