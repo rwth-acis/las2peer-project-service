@@ -37,7 +37,6 @@ import org.json.simple.parser.ParseException;
 import javax.ws.rs.Consumes;
 
 import i5.las2peer.services.projectService.project.Project;
-import i5.las2peer.api.execution.ServiceNotFoundException;
 
 /**
  * las2peer-project-service
@@ -80,7 +79,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.")
 	})
-	public Response postProject(String inputProject) throws ServiceNotFoundException {
+	public Response postProject(String inputProject) {
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "postProject: trying to store a new project");
 		
 		if(Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
