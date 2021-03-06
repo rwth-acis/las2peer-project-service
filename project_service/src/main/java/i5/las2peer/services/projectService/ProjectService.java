@@ -2,7 +2,9 @@ package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.logging.Level;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -13,10 +15,12 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import i5.las2peer.api.Context;
+import i5.las2peer.api.ManualDeployment;
 import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AgentAccessDeniedException;
 import i5.las2peer.api.security.AnonymousAgent;
 import i5.las2peer.api.security.GroupAgent;
+import i5.las2peer.logging.L2pLogger;
 import i5.las2peer.api.logging.MonitoringEvent;
 import i5.las2peer.api.persistency.Envelope;
 import i5.las2peer.api.persistency.EnvelopeAccessDeniedException;
@@ -30,10 +34,15 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.SwaggerDefinition;
+
 import org.json.simple.JSONObject;
 
 import org.json.simple.parser.ParseException;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.Consumes;
 
 import i5.las2peer.services.projectService.project.Project;
@@ -52,12 +61,18 @@ import i5.las2peer.services.projectService.project.Project;
 				description = "A las2peer service for managing projects and their users."
 				))
 @ServicePath("/projects")
+@ManualDeployment
 public class ProjectService extends RESTService {
 	private final static String projects_prefix = "projects";
-	
+	private String visibilityOfProjects;
 	@Override
 	protected void initResources() {
 		getResourceConfig().register(this);
+	}
+	
+	public ProjectService() {
+		super();
+		setFieldValues(); // This sets the values of the configuration file
 	}
 	
 	/**
@@ -131,13 +146,16 @@ public class ProjectService extends RESTService {
 				// writing to user
 				try {
 					// try to add project to project list
+					System.out.println("A");
 					env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
 					cc = (ProjectContainer) env2.getContent();
 					cc.addProject(project);
 					env2.setContent(cc);
 					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
+					System.out.println("B");
 				} catch (EnvelopeNotFoundException e) {
 					// create new project list
+					System.out.println("C");
 					cc = new ProjectContainer();
 					env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
 					env2.setPublic();
@@ -146,6 +164,7 @@ public class ProjectService extends RESTService {
 					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
 				}
 			} catch (EnvelopeOperationFailedException | EnvelopeAccessDeniedException e1) {
+				System.out.println(e1);
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
 			
@@ -169,10 +188,12 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.")
 	})
 	public Response getProjects() {
+		System.out.println("sasas" + visibilityOfProjects);
 		Agent agent = Context.getCurrent().getMainAgent();
 		if(agent instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		}
+		
 		
 		String identifier = projects_prefix;
 		JSONObject result = new JSONObject();
@@ -185,21 +206,24 @@ public class ProjectService extends RESTService {
 			List<Project> projectsWithAccess = new ArrayList<>();
 			
 			// check which of all projects the user has access to
-			for(Project project : projects) {
-				//String projectJSON = entry.getValue();
-				//JSONObject project = (JSONObject) JSONValue.parse(projectJSON);
-				String groupId = project.getGroupIdentifier();
-				// TODO: currently, the entries of the "projects" hashmap do not contain the group id (but only project name and group name)
-				// To check whether the user is a member of the group, we need the group identifier
-				try {
-				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
-				    projectsWithAccess.add(project);
-				} catch(AgentAccessDeniedException e) {
-					// user is not allowed to access group agent => user is no group member
+			if(visibilityOfProjects.equals("all")) {
+				 projectsWithAccess = projects;
+			} else {
+				for(Project project : projects) {
+					//String projectJSON = entry.getValue();
+					//JSONObject project = (JSONObject) JSONValue.parse(projectJSON);
+					String groupId = project.getGroupIdentifier();
+					// TODO: currently, the entries of the "projects" hashmap do not contain the group id (but only project name and group name)
+					// To check whether the user is a member of the group, we need the group identifier
+					try {
+					    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
+					    projectsWithAccess.add(project);
+					} catch(AgentAccessDeniedException e) {
+						// user is not allowed to access group agent => user is no group member
+					}
+					
 				}
-				
 			}
-			
 			List<JSONObject> projectsWithAccessJSON = new ArrayList<>();
 			for(Project project : projectsWithAccess) {
 				projectsWithAccessJSON.add(project.toJSONObject());

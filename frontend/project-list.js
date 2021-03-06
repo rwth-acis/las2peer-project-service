@@ -314,7 +314,7 @@ export class ProjectList extends LitElement {
         // user is not authorized
         // maybe the access token has expired
         Auth.removeAuthDataFromLocalStorage();
-        location.reload();
+    //    location.reload();
       } else {
         console.log(error);
         // in case of contactservice not running, which should not happen in real deployment
@@ -422,7 +422,7 @@ export class ProjectList extends LitElement {
         // user is not authorized
         // maybe the access token has expired
         Auth.removeAuthDataFromLocalStorage();
-        location.reload();
+     //   location.reload();
       } else {
         console.log(error);
       }
@@ -536,7 +536,7 @@ export class ProjectList extends LitElement {
             this.shadowRoot.getElementById("toast-already-existing").show();
           } else if(response.status == 401) {
             Auth.removeAuthDataFromLocalStorage();
-            location.reload();
+       //     location.reload();
           }
           // TODO: check what happens when access_token is missing in localStorage
         });
