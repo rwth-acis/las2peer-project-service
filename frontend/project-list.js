@@ -197,7 +197,7 @@ export class ProjectList extends LitElement {
           </div>
         ` : html``}
         ${this.listedProjects.map(project => html`
-            <paper-card class="project-item-card" @click="${() => this._onProjectItemClicked(project.id)}">
+            <paper-card class="project-item-card" @click="${() => this._onProjectItemClicked(project.name)}">
               <div class="project-item-card-content">
                 <p class="project-item-name">${project.name}</p>
                 <div style="margin-left: auto; display: flex">
@@ -372,24 +372,9 @@ export class ProjectList extends LitElement {
     this.projectsLoading = true;
     console.log("sasaq");
     // clear current project list
-    /*this.projects = [];
+    this.projects = [];
     this.listedProjects = [];
-*/
-    // Following code is used for testing only
-    this.projectsLoading = false;
 
-   /*let data = [
-      {
-        "id": 1,
-        "name": "Project 1"
-      },
-      {
-        "id": 2,
-        "name": "Project 2"
-      }
-    ];
-    this.projects = data;
-    this.listedProjects = data;*/
     /*
     // only send authHeader when not all projects should be shown, but only the
     // one from the current user
@@ -432,23 +417,23 @@ export class ProjectList extends LitElement {
   /**
    * Gets called when the user clicks on a project in the project list. Fires an event that notifies the parent
    * elements that a project got selected.
-   * @param projectId Id of the project that got selected in the project list.
+   * @param projectName Name of the project that got selected in the project list.
    * @private
    */
-  _onProjectItemClicked(projectId) {
+  _onProjectItemClicked(projectName) {
     // TODO: give full information on the project and whether the user is a member of it
     let event = new CustomEvent("project-selected", {
       detail: {
         message: "Selected project in project list.",
-        project: this.getProjectById(projectId)
+        project: this.getProjectByName(projectName)
       },
       bubbles: true
     });
     this.dispatchEvent(event);
   }
 
-  getProjectById(id) {
-    return this.listedProjects.find(x => x.id == id);
+  getProjectByName(name) {
+    return this.listedProjects.find(x => x.name === name);
   }
 
   /**

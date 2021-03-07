@@ -161,7 +161,7 @@ public class ProjectService extends RESTService {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
 			
-			return Response.status(HttpURLConnection.HTTP_OK).entity("Added Project To l2p Storage").build();
+			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 		}
 	}
 	
@@ -226,7 +226,8 @@ public class ProjectService extends RESTService {
 			//System.out.println(result);
 			return Response.status(Status.OK).entity(result).build();
 		} catch (EnvelopeNotFoundException e) {
-			return Response.status(Status.OK).entity("No projects found").build();
+			result.put("projects", new ArrayList<>());
+			return Response.status(Status.OK).entity(result).build();
 		} catch (Exception e) {
 			// write error to logfile and console
 			// Couldnt build due to logging error so just left it out for now...

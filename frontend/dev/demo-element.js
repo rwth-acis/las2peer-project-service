@@ -109,7 +109,7 @@ export class DemoElement extends LitElement {
         <div style="flex: 1; margin-left: 1em">
           <h1>Demo information:</h1>
           <h3>Selected project:</h3>
-          <p>${this.selectedProject}</p>
+          <p style="max-width: 200px">${this.selectedProject}</p>
         </div>
       </div>
       
@@ -128,7 +128,9 @@ export class DemoElement extends LitElement {
    * @private
    */
   _onProjectSelected(event) {
+    console.log("onProjectSelected called");
     this.selectedProject = JSON.stringify(event.detail.project);
+    console.log(this.selectedProject);
   }
 }
 
