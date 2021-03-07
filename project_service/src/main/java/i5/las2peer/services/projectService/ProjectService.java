@@ -2,9 +2,7 @@ package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -20,7 +18,6 @@ import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AgentAccessDeniedException;
 import i5.las2peer.api.security.AnonymousAgent;
 import i5.las2peer.api.security.GroupAgent;
-import i5.las2peer.logging.L2pLogger;
 import i5.las2peer.api.logging.MonitoringEvent;
 import i5.las2peer.api.persistency.Envelope;
 import i5.las2peer.api.persistency.EnvelopeAccessDeniedException;
@@ -39,10 +36,6 @@ import org.json.simple.JSONObject;
 
 import org.json.simple.parser.ParseException;
 
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.Consumes;
 
 import i5.las2peer.services.projectService.project.Project;
