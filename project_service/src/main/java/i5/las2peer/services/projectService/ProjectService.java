@@ -195,37 +195,34 @@ public class ProjectService extends RESTService {
 			ProjectContainer cc = (ProjectContainer) stored.getContent();
 			// read all projects from the project list
 			List<Project> projects = cc.getAllProjects();
-			// create another hashmap for storing the projects, where the requesting agent has access to
-			List<Project> projectsWithAccess = new ArrayList<>();
+			// create another list for storing the projects that should be returned as JSON objects
+			List<JSONObject> projectsJSON = new ArrayList<>();
 			
-			// check which of all projects the user has access to
-			if(visibilityOfProjects.equals("all")) {
-				 projectsWithAccess = projects;
-			} else {
-				for(Project project : projects) {
-					//String projectJSON = entry.getValue();
-					//JSONObject project = (JSONObject) JSONValue.parse(projectJSON);
-					String groupId = project.getGroupIdentifier();
-					// TODO: currently, the entries of the "projects" hashmap do not contain the group id (but only project name and group name)
-					// To check whether the user is a member of the group, we need the group identifier
-					try {
-					    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
-					    projectsWithAccess.add(project);
-					} catch(AgentAccessDeniedException e) {
-						// user is not allowed to access group agent => user is no group member
+			for(Project project : projects) {
+				// To check whether the user is a member of the project/group, we need the group identifier
+				String groupId = project.getGroupIdentifier();
+				JSONObject projectJSON = project.toJSONObject();
+				try {
+				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
+				    // user is allowed to access group agent => user is a project/group member
+				    // add attribute to project JSON which tells that the user is a project member
+				    projectJSON.put("is_member", true);
+				    projectsJSON.add(projectJSON);
+				} catch(AgentAccessDeniedException e) {
+					// user is not allowed to access group agent => user is no project/group member
+					// only return this project if the service is configured that all projects are readable by any user
+					if(visibilityOfProjects.equals("all")) {
+						projectJSON.put("is_member", false);
+					    projectsJSON.add(projectJSON);
 					}
-					
 				}
 			}
-			List<JSONObject> projectsWithAccessJSON = new ArrayList<>();
-			for(Project project : projectsWithAccess) {
-				projectsWithAccessJSON.add(project.toJSONObject());
-			}
 			
-			result.put("projects", projectsWithAccessJSON);
+			result.put("projects", projectsJSON);
 			//System.out.println(result);
 			return Response.status(Status.OK).entity(result).build();
 		} catch (EnvelopeNotFoundException e) {
+			// return empty list of projects
 			result.put("projects", new ArrayList<>());
 			return Response.status(Status.OK).entity(result).build();
 		} catch (Exception e) {

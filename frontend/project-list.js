@@ -171,7 +171,7 @@ export class ProjectList extends LitElement {
 
     this.disableAllProjects = false;
 
-    this.showProjects(!this.disableAllProjects);
+    this.showProjects(false);
   }
 
   render() {
@@ -392,6 +392,9 @@ export class ProjectList extends LitElement {
       console.log("Projects are", data.projects);
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
+
+      // if we only want to show the projects, where the user is a member of, we need to filter out some projects
+      if(!allProjects) data.projects = data.projects.filter(project => project.is_member);
 
       // store loaded projects
       this.projects = data.projects;
