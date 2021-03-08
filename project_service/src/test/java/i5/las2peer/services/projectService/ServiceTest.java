@@ -2,6 +2,7 @@ package i5.las2peer.services.projectService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.net.HttpURLConnection;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -85,23 +86,27 @@ public class ServiceTest {
 		}
 
 		/**
-		 * Tests the main endpoint method.
+		 * Tests the method for fetching projects.
 		 */
 		@Test
-		public void testGetMain() {
-			Assert.assertEquals(200, 200);
-			/*try {
+		public void testGetProjects() {
+			try {
 				MiniClient client = new MiniClient();
 				client.setConnectorEndpoint(connector.getHttpEndpoint());
-				// no agent is required for this method
 				
+				// first try without agent (this should not be possible)
 				ClientResponse result = client.sendRequest("GET", mainPath, "");
-				Assert.assertEquals(200, result.getHttpCode());
-				Assert.assertEquals("Project service is running.", result.getResponse().trim());
-				System.out.println("Result of 'testGetMain': " + result.getResponse().trim());
+				Assert.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, result.getHttpCode());
+				
+				// now use an agent
+				client.setLogin(testAgent.getIdentifier(), testPass);
+				result = client.sendRequest("GET", mainPath, "");
+				// we should get 200 and an empty list
+				Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+				Assert.assertEquals("{\"projects\":[]}", result.getResponse().trim());
 			} catch (Exception e) {
 				e.printStackTrace();
 				Assert.fail(e.toString());
-			}*/
+			}
 		}
 	}

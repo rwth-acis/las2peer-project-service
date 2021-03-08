@@ -1,4 +1,4 @@
-package i5.las2peer.services.projectManagementService.exception;
+package i5.las2peer.services.projectService.exception;
 
 public class GitHubException extends Exception {
 
