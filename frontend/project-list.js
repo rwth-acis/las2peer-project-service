@@ -656,7 +656,9 @@ export class ProjectList extends LitElement {
         })
       }).then( response => {
           if(!response.ok) throw Error(response.status);
-            this._onGroupChangeDone(response.json());
+            return response.json();
+      }).then(data => {
+          this._onGroupChangeDone(data);
       }).catch(error => {
         if(error.message == "401") {
           // user is not authorized
