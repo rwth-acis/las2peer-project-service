@@ -117,6 +117,12 @@ public class Project implements Serializable {
 		}
 	}
 
+	/**
+	 * Changes linked group to given new group.
+	 * 
+	 * @param groupIdentifier Groupagent id of new group
+	 * @param groupName       Groupname of new group
+	 */
 	public void changeGroup(String groupIdentifier, String groupName) {
 		this.groupIdentifier = groupIdentifier;
 		this.groupName = groupName;

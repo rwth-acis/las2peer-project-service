@@ -241,9 +241,9 @@ public class ProjectService extends RESTService {
 	 * Changes the group linked to an existing project in the pastry storage.
 	 * Therefore, the user needs to be authorized.
 	 * 
-	 * @param inputProject JSON representation of the project to store (containing
-	 *                     name and access token of user needed to create
-	 *                     Requirements Bazaar category).
+	 * @param body JSON representation of the project to store (containing name and
+	 *             access token of user needed to create Requirements Bazaar
+	 *             category).
 	 * @return Response containing the status code (and a message or the created
 	 *         project).
 	 */
