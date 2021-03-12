@@ -15,7 +15,9 @@ import javax.ws.rs.core.Response.Status;
 import i5.las2peer.api.Context;
 import i5.las2peer.api.ManualDeployment;
 import i5.las2peer.api.security.Agent;
+import i5.las2peer.api.security.AgentNotFoundException;
 import i5.las2peer.api.security.AgentAccessDeniedException;
+import i5.las2peer.api.security.AgentOperationFailedException;
 import i5.las2peer.api.security.AnonymousAgent;
 import i5.las2peer.api.security.GroupAgent;
 import i5.las2peer.api.logging.MonitoringEvent;
@@ -36,6 +38,8 @@ import org.json.simple.JSONObject;
 
 import org.json.simple.parser.ParseException;
 
+import org.json.simple.JSONValue;
+
 import javax.ws.rs.Consumes;
 
 import i5.las2peer.services.projectService.project.Project;
@@ -47,95 +51,96 @@ import i5.las2peer.services.projectService.project.Project;
  * 
  */
 @Api
-@SwaggerDefinition(
-		info = @Info(
-				title = "las2peer Project Service",
-				version = "1.0.0",
-				description = "A las2peer service for managing projects and their users."
-				))
+@SwaggerDefinition(info = @Info(title = "las2peer Project Service", version = "1.0.0", description = "A las2peer service for managing projects and their users."))
 @ServicePath("/projects")
 @ManualDeployment
 public class ProjectService extends RESTService {
 	private final static String projects_prefix = "projects";
 	private String visibilityOfProjects;
+
 	@Override
 	protected void initResources() {
 		getResourceConfig().register(this);
 	}
-	
+
 	public ProjectService() {
 		super();
 		setFieldValues(); // This sets the values of the configuration file
 	}
-	
+
 	/**
-	 * Creates a new project in the pastry storage.
-	 * Therefore, the user needs to be authorized.
-	 * First, checks if a project with the given name already exists.
-	 * If not, then the new project gets stored into the pastry storage.
-	 * @param inputProject JSON representation of the project to store (containing name and access token of user needed to create Requirements Bazaar category).
-	 * @return Response containing the status code (and a message or the created project).
+	 * Creates a new project in the pastry storage. Therefore, the user needs to be
+	 * authorized. First, checks if a project with the given name already exists. If
+	 * not, then the new project gets stored into the pastry storage.
+	 * 
+	 * @param inputProject JSON representation of the project to store (containing
+	 *                     name and access token of user needed to create
+	 *                     Requirements Bazaar category).
+	 * @return Response containing the status code (and a message or the created
+	 *         project).
 	 */
 	@POST
 	@Path("/")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@ApiOperation(value = "Creates a new project in the pastry storage if no project with the same name is already existing.")
-	@ApiResponses(value = {
-			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, project created."),
+	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, project created."),
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
 			@ApiResponse(code = HttpURLConnection.HTTP_CONFLICT, message = "There already exists a project with the given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
-			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.")
-	})
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response postProject(String inputProject) {
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "postProject: trying to store a new project");
-		
-		if(Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
+
+		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		} else {
 			Agent agent = Context.getCurrent().getMainAgent();
 			Envelope env = null;
 			Envelope env2 = null;
-			//String id = "";
+			// String id = "";
 			Project project;
-			
+
 			try {
 				project = new Project(agent, inputProject);
 			} catch (ParseException e) {
-				// JSON project given with the request is not well formatted or some attributes are missing
+				// JSON project given with the request is not well formatted or some attributes
+				// are missing
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 			}
-			
+
 			String identifier = projects_prefix + "_" + project.getName();
 			String identifier2 = projects_prefix;
-			
+
 			try {
 				Context.get().requestEnvelope(identifier);
-				// if requesting the envelope does not fail, then there already exists a project with the given name
+				// if requesting the envelope does not fail, then there already exists a project
+				// with the given name
 				return Response.status(HttpURLConnection.HTTP_CONFLICT).entity("Project already exists").build();
 			} catch (EnvelopeNotFoundException e) {
-				// requesting the envelope failed, thus no project with the given name exists and we can create it
+				// requesting the envelope failed, thus no project with the given name exists
+				// and we can create it
 			} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
-			
+
 			ProjectContainer cc = new ProjectContainer();
-			
+
 			// try to create group
-			//groupAgent = Context.get().createGroupAgent(members, name);
+			// groupAgent = Context.get().createGroupAgent(members, name);
 			cc.addProject(project);
 			try {
 				System.out.println("Creating envelope");
 				// create envelope for project using the ServiceAgent
 				env = Context.get().createEnvelope(identifier, Context.get().getServiceAgent());
 				System.out.println("Setting envelope content");
-				// set the project container (which only contains the new project) as the envelope content
+				// set the project container (which only contains the new project) as the
+				// envelope content
 				env.setContent(cc);
 				System.out.println("Storing envelope");
 				// store envelope using ServiceAgent
 				Context.get().storeEnvelope(env, Context.get().getServiceAgent());
 				System.out.println("Storing complete");
-				
+
 				// writing to user
 				try {
 					// try to add project to project list
@@ -160,66 +165,65 @@ public class ProjectService extends RESTService {
 				System.out.println(e1);
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
-			
+
 			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 		}
 	}
-	
-	
+
 	/**
-	 * Gets a user's projects
-	 * Therefore, the user needs to be authorized.
+	 * Gets a user's projects Therefore, the user needs to be authorized.
+	 * 
 	 * @return Response containing the status code
 	 */
 	@GET
 	@Path("/")
 	@Produces(MediaType.APPLICATION_JSON)
 	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
-	@ApiResponses(value = {
-			@ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, projects fetched."),
+	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, projects fetched."),
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
-			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.")
-	})
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response getProjects() {
 		System.out.println("sasas" + visibilityOfProjects);
 		Agent agent = Context.getCurrent().getMainAgent();
-		if(agent instanceof AnonymousAgent) {
+		if (agent instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		}
-		
-		
+
 		String identifier = projects_prefix;
 		JSONObject result = new JSONObject();
-	    try {
+		try {
 			Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
 			ProjectContainer cc = (ProjectContainer) stored.getContent();
 			// read all projects from the project list
 			List<Project> projects = cc.getAllProjects();
-			// create another list for storing the projects that should be returned as JSON objects
+			// create another list for storing the projects that should be returned as JSON
+			// objects
 			List<JSONObject> projectsJSON = new ArrayList<>();
-			
-			for(Project project : projects) {
-				// To check whether the user is a member of the project/group, we need the group identifier
+
+			for (Project project : projects) {
+				// To check whether the user is a member of the project/group, we need the group
+				// identifier
 				String groupId = project.getGroupIdentifier();
 				JSONObject projectJSON = project.toJSONObject();
 				try {
-				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
-				    // user is allowed to access group agent => user is a project/group member
-				    // add attribute to project JSON which tells that the user is a project member
-				    projectJSON.put("is_member", true);
-				    projectsJSON.add(projectJSON);
-				} catch(AgentAccessDeniedException e) {
+					GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, agent);
+					// user is allowed to access group agent => user is a project/group member
+					// add attribute to project JSON which tells that the user is a project member
+					projectJSON.put("is_member", true);
+					projectsJSON.add(projectJSON);
+				} catch (AgentAccessDeniedException e) {
 					// user is not allowed to access group agent => user is no project/group member
-					// only return this project if the service is configured that all projects are readable by any user
-					if(visibilityOfProjects.equals("all")) {
+					// only return this project if the service is configured that all projects are
+					// readable by any user
+					if (visibilityOfProjects.equals("all")) {
 						projectJSON.put("is_member", false);
-					    projectsJSON.add(projectJSON);
+						projectsJSON.add(projectJSON);
 					}
 				}
 			}
-			
+
 			result.put("projects", projectsJSON);
-			//System.out.println(result);
+			// System.out.println(result);
 			return Response.status(Status.OK).entity(result).build();
 		} catch (EnvelopeNotFoundException e) {
 			// return empty list of projects
@@ -228,8 +232,105 @@ public class ProjectService extends RESTService {
 		} catch (Exception e) {
 			// write error to logfile and console
 			// Couldnt build due to logging error so just left it out for now...
-			//logger.log(Level.SEVERE, "Can't persist to network storage!", e);
+			// logger.log(Level.SEVERE, "Can't persist to network storage!", e);
 			return Response.status(Status.BAD_REQUEST).entity("Unknown error occured: " + e.getMessage()).build();
+		}
+	}
+
+	/**
+	 * Changes the group linked to an existing project in the pastry storage.
+	 * Therefore, the user needs to be authorized.
+	 * 
+	 * @param inputProject JSON representation of the project to store (containing
+	 *                     name and access token of user needed to create
+	 *                     Requirements Bazaar category).
+	 * @return Response containing the status code (and a message or the created
+	 *         project).
+	 */
+	@POST
+	@Path("/changeGroup")
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.APPLICATION_JSON)
+	@ApiOperation(value = "Creates a new project in the pastry storage if no project with the same name is already existing.")
+	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, group changed."),
+			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
+			@ApiResponse(code = HttpURLConnection.HTTP_CONFLICT, message = "The given group is already linked to the project."),
+			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
+	public Response changeGroup(String body) {
+		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
+
+		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
+			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
+		} else {
+			Agent agent = Context.getCurrent().getMainAgent();
+			try {
+				JSONObject jsonBody = (JSONObject) JSONValue.parseWithException(body);
+
+				String projectName = (String) jsonBody.get("projectName");
+				String newGroupId = (String) jsonBody.get("newGroupId");
+				String newGroupName = (String) jsonBody.get("newGroupName");
+				String identifier = projects_prefix;
+
+				try {
+					Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
+					ProjectContainer cc = (ProjectContainer) stored.getContent();
+					// read all projects from the project list
+					List<Project> projects = cc.getAllProjects();
+
+					for (Project project : projects) {
+						// To check whether the user is a member of the project/group, we need the group
+						// identifier
+						String groupId = project.getGroupIdentifier();
+						// Search correct project
+						if (projectName.equals(project.getName())) {
+							// check if new group actually differs from old group
+							if (!newGroupId.equals(groupId)) {
+								try {
+									GroupAgent ga = (GroupAgent) Context.get().requestAgent(newGroupId, agent);
+									// user is allowed to access group agent => user is a project/group member
+									cc.removeProject(project);
+									project.changeGroup(newGroupId, newGroupName);
+									cc.addProject(project);
+									stored.setContent(cc);
+									Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+									JSONObject response = new JSONObject();
+									response.put("project", project);
+									return Response.status(Status.OK).entity("Group successfully changed!")
+											.entity(response).build();
+								} catch (AgentAccessDeniedException e) {
+									// user is not allowed to access group agent => user is no project/group member
+									// cant use group which user is not a part of
+									return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+											.entity("You are not a part of this group!").build();
+
+								} catch (AgentNotFoundException e) {
+									// or: group does not exist
+									return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+											.entity("Non-existing group").build();
+								} catch (AgentOperationFailedException e) {
+									return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity(e).build();
+								}
+							}
+						}
+					}
+
+					// create another list for storing the projects that should be returned as JSON
+					// objects
+					List<JSONObject> projectsJSON = new ArrayList<>();
+				} catch (EnvelopeNotFoundException e) {
+
+					return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("No projects available.").build();
+				} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+				}
+			} catch (ParseException e) {
+				// JSON project given with the request is not well formatted or some attributes
+				// are missing
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
+			}
+
+			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 		}
 	}
 }

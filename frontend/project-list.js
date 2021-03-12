@@ -247,7 +247,7 @@ export class ProjectList extends LitElement {
             @click=${this._onEditConnectedGroupClicked}></iron-icon>
         </div>
         <div class="buttons">
-          <paper-button dialog-confirm>OK</paper-button>
+          <paper-button dialog-confirm @click=${this._onGroupChanged}>OK</paper-button>
         </div>
       </paper-dialog>
       
@@ -434,10 +434,29 @@ export class ProjectList extends LitElement {
     });
     this.dispatchEvent(event);
   }
+  
 
   getProjectByName(name) {
     return this.listedProjects.find(x => x.name === name);
   }
+
+    /**
+   * Gets called when the user clicks on a project in the project list. Fires an event that notifies the parent
+   * elements that a project got selected.
+   * @param projectName Name of the project that got selected in the project list.
+   * @private
+   */
+     _onGroupChangeDone(project) {
+      // TODO: give full information on the project and whether the user is a member of it
+      let event = new CustomEvent("project-selected", {
+        detail: {
+          message: "Selected project in project list.",
+          project: project
+        },
+        bubbles: true
+      });
+      this.dispatchEvent(event);
+    }
 
   /**
    * Gets called when the user clicks on the "Close" button in the create project dialog.
@@ -556,12 +575,101 @@ export class ProjectList extends LitElement {
    * @private
    */
   _onEditConnectedGroupClicked() {
-    // hide current group name paragraph element
-    this.shadowRoot.getElementById("connected-group-name").style.setProperty("display", "none");
+    
+    fetch(this.contactServiceURL + "/groups", {
+      method: "GET",
+      headers: Auth.getAuthHeaderWithSub()
+    }).then(response => {
+      if(!response.ok) throw Error(response.status);
+      return response.json();
+    }).then(data => {
+      // store loaded groups
+      // groups given by contact service as a JSONObject with key = group agent id and value = group name
+      // we create an array of objects with id and name attribute out of it
+      this.groups = [];
+      for(let key of Object.keys(data)) {
+        let group = {
+          "id": key,
+          "name": data[key]
+        };
+        this.groups.push(group);
+      }
+        // hide current group name paragraph element
+        this.shadowRoot.getElementById("connected-group-name").style.setProperty("display", "none");
 
-    // show dropdown menu to select a different group, therefore remove display: none
-    this.shadowRoot.getElementById("input-edit-group-name").style.removeProperty("display");
+        // show dropdown menu to select a different group, therefore remove display: none
+        this.shadowRoot.getElementById("input-edit-group-name").style.removeProperty("display");
+      });
+    
+    
+
+
+    /*const projectName = this.shadowRoot.getElementById("connected-group-project-name").value;
+    const newLinkedGroupName = this.shadowRoot.getElementById("input-edit-group-name").value;
+
+    fetch(this.projectServiceURL + "/projects/changeGroup/", {
+      method: "POST",
+      headers: Auth.getAuthHeaderWithSub(),
+      body: JSON.stringify({
+        "name": projectName,
+        "access_token": Auth.getAccessToken(),
+        "newGroupNameId": newLinkedGroupName
+      })
+    }).then( response => {
+        if(!response.ok) throw Error(response.status);
+        console.log(typeof response)
+        console.log("ssssssss" + Object.keys(response));
+        return response.json();
+    })*/
+
   }
+
+    /**
+   * Gets called when the "Group" icon of one of the displayed projects gets clicked and opens a dialog with
+   * information on the group which is currently connected to the project.
+   * @param project
+   */
+    _onGroupChanged() {
+      
+      const projectName = this.shadowRoot.getElementById("connected-group-project-name").innerText;
+      const newLinkedGroupName = this.shadowRoot.getElementById("input-edit-group-name").value;
+      if(newLinkedGroupName == undefined){
+        return;
+      }
+
+      var newLinkedGroupId = "";
+      for(let key of Object.keys(this.groups)) {
+        if(this.groups[key].name == newLinkedGroupName){
+            newLinkedGroupId = this.groups[key].id;
+            break;
+        }
+      }
+      fetch(this.projectServiceURL + "/projects/changeGroup/", {
+        method: "POST",
+        headers: Auth.getAuthHeaderWithSub(),
+        body: JSON.stringify({
+          "name": projectName,
+          "access_token": Auth.getAccessToken(),
+          "projectName": projectName,
+          "newGroupName": newLinkedGroupName,
+          "newGroupId": newLinkedGroupId
+        })
+      }).then( response => {
+          if(!response.ok) throw Error(response.status);
+            this._onGroupChangeDone(response.json());
+      }).catch(error => {
+        if(error.message == "401") {
+          // user is not authorized
+          // maybe the access token has expired
+          Auth.removeAuthDataFromLocalStorage();
+       //   location.reload();
+        } else {
+          console.log(error);
+        }
+      });
+
+
+    }
 
   /**
    * Gets called when the "Group" icon of one of the displayed projects gets clicked and opens a dialog with
