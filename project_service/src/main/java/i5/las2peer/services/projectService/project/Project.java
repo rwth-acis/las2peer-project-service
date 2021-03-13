@@ -83,38 +83,47 @@ public class Project implements Serializable {
 	 * @throws ParseException If parsing went wrong.
 	 */
 	public Project(Agent creator, String jsonProject) throws ParseException {
-		try {
-			JSONObject project = (JSONObject) JSONValue.parseWithException(jsonProject);
+		JSONObject project = (JSONObject) JSONValue.parseWithException(jsonProject);
 
-			if (!project.containsKey("name"))
-				throw new ParseException(0, "Attribute 'name' of project is missing.");
-			this.name = (String) project.get("name");
+		if (!project.containsKey("name"))
+			throw new ParseException(0, "Attribute 'name' of project is missing.");
+		this.name = (String) project.get("name");
 
-			// this.users = new ArrayList<>();
-			// this.users.add(creator);
-			// group and users to project from said group
-			JSONObject linkedGroup = (JSONObject) project.get("linkedGroup");
-			this.groupName = (String) linkedGroup.get("name");
-			this.groupIdentifier = (String) linkedGroup.get("id");
-			for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
-				String userName = ((JSONArray) project.get("users")).get(i).toString();
-				try {
-					String userId = Context.get().getUserAgentIdentifierByLoginName(userName);
-					System.out.println(userId);
-					// this.users.add(userId);
-				} catch (Exception q) {
-					System.out.println(q + "User does not exist?");
-				}
-				/*
-				 * if(user != true) {
-				 * 
-				 * }
-				 */
-			}
-			// this.roleAssignment = new HashMap<>();
-		} catch (ParseException e) {
-			e.printStackTrace();
+		// this.users = new ArrayList<>();
+		// this.users.add(creator);
+		// group and users to project from said group
+		if (!project.containsKey("linkedGroup"))
+			throw new ParseException(0, "Attribute 'linkedGroup' of project is missing.");
+		JSONObject linkedGroup = (JSONObject) project.get("linkedGroup");
+		
+		// get name of linked group
+		if (!linkedGroup.containsKey("name"))
+			throw new ParseException(0, "Attribute 'name' of project linked group is missing.");
+		this.groupName = (String) linkedGroup.get("name");
+		
+		// get id of linked group
+		if (!linkedGroup.containsKey("id"))
+			throw new ParseException(0, "Attribute 'id' of project linked group is missing.");
+		this.groupIdentifier = (String) linkedGroup.get("id");
+		
+		if(project.containsKey("users")) {
+		    for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
+			    String userName = ((JSONArray) project.get("users")).get(i).toString();
+			    try {
+				    String userId = Context.get().getUserAgentIdentifierByLoginName(userName);
+				    System.out.println(userId);
+				    // this.users.add(userId);
+			    } catch (Exception q) {
+				    System.out.println(q + "User does not exist?");
+			    }
+			    /*
+			     * if(user != true) {
+			     * 
+			     * }
+			     */
+		    }
 		}
+		// this.roleAssignment = new HashMap<>();
 	}
 
 	/**
