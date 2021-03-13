@@ -67,6 +67,23 @@ public class ProjectService extends RESTService {
 		super();
 		setFieldValues(); // This sets the values of the configuration file
 	}
+	
+	/**
+	 * This method can be used by other services, to verify if a user is allowed to write-access a project.
+	 * @param projectName Project where the permission should be checked for.
+	 * @return True, if agent has access to project. False otherwise (or if project with given name does not exist).
+	 */
+	public boolean hasAccessToProject(String projectName) {
+		String identifier = projects_prefix + "_" + projectName;
+		try {
+			Context.getCurrent().requestEnvelope(identifier);
+		} catch (EnvelopeAccessDeniedException e) {
+			return false;
+		} catch (EnvelopeNotFoundException | EnvelopeOperationFailedException e) {
+			return false;
+		}
+		return true;
+	}
 
 	/**
 	 * Creates a new project in the pastry storage. Therefore, the user needs to be
@@ -122,6 +139,20 @@ public class ProjectService extends RESTService {
 			} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
+			
+			GroupAgent groupAgent;
+			try {
+				// use main agent (user) to request the group agent 
+				groupAgent = (GroupAgent) Context.get().requestAgent(project.getGroupIdentifier(), Context.get().getMainAgent());
+			} catch (AgentAccessDeniedException e) {
+				// could not unlock group agent => user is no group member
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("User is no member of the group linked to the given project.").build();
+			} catch (AgentNotFoundException e) {
+				// could not find group agent
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("The group linked to the given project cannot be found.").build();
+			} catch (AgentOperationFailedException e) {
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
 
 			ProjectContainer cc = new ProjectContainer();
 
@@ -130,20 +161,20 @@ public class ProjectService extends RESTService {
 			cc.addProject(project);
 			try {
 				System.out.println("Creating envelope");
-				// create envelope for project using the ServiceAgent
-				env = Context.get().createEnvelope(identifier, Context.get().getServiceAgent());
+				// create envelope for project using the group agent
+				env = Context.get().createEnvelope(identifier, groupAgent);
 				System.out.println("Setting envelope content");
 				// set the project container (which only contains the new project) as the
 				// envelope content
 				env.setContent(cc);
 				System.out.println("Storing envelope");
-				// store envelope using ServiceAgent
-				Context.get().storeEnvelope(env, Context.get().getServiceAgent());
+				// store envelope using the group agent
+				Context.get().storeEnvelope(env, groupAgent);
 				System.out.println("Storing complete");
 
 				// writing to user
 				try {
-					// try to add project to project list
+					// try to add project to project list (with ServiceAgent)
 					System.out.println("A");
 					env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
 					cc = (ProjectContainer) env2.getContent();
@@ -152,7 +183,7 @@ public class ProjectService extends RESTService {
 					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
 					System.out.println("B");
 				} catch (EnvelopeNotFoundException e) {
-					// create new project list
+					// create new project list (with ServiceAgent)
 					System.out.println("C");
 					cc = new ProjectContainer();
 					env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
