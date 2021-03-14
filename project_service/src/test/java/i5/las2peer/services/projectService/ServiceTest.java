@@ -41,6 +41,8 @@ public class ServiceTest {
 		
 		private String identifierGroupA;
 		private static final String nameGroupA = "groupA";
+		private String identifierGroup1;
+		private static final String nameGroup1 = "group1";
 		
 		
 
@@ -77,6 +79,12 @@ public class ServiceTest {
 			this.identifierGroupA = groupA.getIdentifier();
 			groupA.unlock(testAgentAdam);
 			node.storeAgent(groupA);
+			
+			// use group 1 where adam and eve are member
+			GroupAgentImpl group1 = MockAgentFactory.getGroup1();
+			this.identifierGroup1 = group1.getIdentifier();
+			group1.unlock(testAgentAdam);
+			node.storeAgent(group1);
 			
 			// start project service
 			// during testing, the specified service version does not matter
@@ -175,6 +183,18 @@ public class ServiceTest {
 			    client.setLogin(testAgentEve.getIdentifier(), testPassEve);
 			    result = client.sendRequest("POST", mainPath,  this.getProjectJSON("Project1_testPostProject", "groupName", this.identifierGroupA));
 			    Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			    
+			    // now test with an existing group and a group member
+			    client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			    result = client.sendRequest("POST", mainPath,  this.getProjectJSON("Project1_testPostProject", "groupName", this.identifierGroupA));
+			    Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			    
+			    // test with metadata
+			    JSONObject metadata = new JSONObject();
+			    metadata.put("attr1", "value1");
+			    metadata.put("attr2", "value2");
+			    result = client.sendRequest("POST", mainPath,  this.getProjectJSON("Project2_testPostProject", "groupName", this.identifierGroupA, metadata.toJSONString()));
+			    Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
 			} catch (Exception e) {
 				e.printStackTrace();
 				Assert.fail(e.toString());
@@ -183,30 +203,67 @@ public class ServiceTest {
 		
 		@Test
 		public void testRMIMethodHasAccessToProject() {
-			MiniClient client = new MiniClient();
-			client.setConnectorEndpoint(connector.getHttpEndpoint());
+			try {
+			    MiniClient client = new MiniClient();
+			    client.setConnectorEndpoint(connector.getHttpEndpoint());
 			
-			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
-			String projectName = "project1_testRMIMethodHasAccessToProject";
-			ClientResponse result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
-			// there should not exist a project with the given name yet, so user cannot have access to it
-			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
-			Assert.assertEquals("false", result.getResponse().trim());
+			    client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			    String projectName = "project1_testRMIMethodHasAccessToProject";
+			    ClientResponse result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
+			    // there should not exist a project with the given name yet, so user cannot have access to it
+			    Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			    Assert.assertEquals("false", result.getResponse().trim());
 			
-			// create a project
-			result = client.sendRequest("POST", mainPath, this.getProjectJSON(projectName, this.nameGroupA, this.identifierGroupA));
-			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			    // create a project
+			    result = client.sendRequest("POST", mainPath, this.getProjectJSON(projectName, this.nameGroupA, this.identifierGroupA));
+			    Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
 			
-			// now check if the agent has access to this existing project
-			// test with adam first, adam is a member of group A
-			result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
-			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
-			Assert.assertEquals("true", result.getResponse().trim());
-			// now test with eve, eve is no member of group A
-			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
-			result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
-			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
-			Assert.assertEquals("false", result.getResponse().trim());
+			    // now check if the agent has access to this existing project
+			    // test with adam first, adam is a member of group A
+			    result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
+			    Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			    Assert.assertEquals("true", result.getResponse().trim());
+			    // now test with eve, eve is no member of group A
+			    client.setLogin(testAgentEve.getIdentifier(), testPassEve);
+			    result = client.sendRequest("GET", "rmitestservice/checkProjectAccess/" + projectName, "");
+			    Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			    Assert.assertEquals("false", result.getResponse().trim());
+			} catch (Exception e) {
+				e.printStackTrace();
+				Assert.fail(e.toString());
+			}
+		}
+		
+		@Test
+		public void testChangeGroup() {
+			try {
+			    MiniClient client = new MiniClient();
+			    client.setConnectorEndpoint(connector.getHttpEndpoint());
+			    
+			    client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			    // create project using adam and group A
+			    String projectName = "Project1_testGetChangeGroup";
+			    ClientResponse result = client.sendRequest("POST", mainPath, this.getProjectJSON(projectName, this.nameGroupA, this.identifierGroupA));
+				Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+				
+				JSONObject o = new JSONObject();
+				o.put("projectName", projectName);
+				o.put("newGroupId", this.identifierGroup1);
+				o.put("newGroupName", this.nameGroup1);
+				
+				// try changing group using eve (who is no project member)
+				 client.setLogin(testAgentEve.getIdentifier(), testPassEve);
+				result = client.sendRequest("POST", mainPath + "changeGroup", o.toJSONString());
+				Assert.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getHttpCode());
+				
+			    // now change group using adam (who is a project member)
+				client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+				result = client.sendRequest("POST", mainPath + "changeGroup", o.toJSONString());
+				Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			} catch (Exception e) {
+				e.printStackTrace();
+				Assert.fail(e.toString());
+			}
 		}
 		
 		/**
@@ -214,7 +271,21 @@ public class ServiceTest {
 		 * @param projectName Name of the project.
 		 * @param linkedGroupName Name of the group which gets linked to the project.
 		 * @param linkedGroupId Id of the group which gets linked to the project.
+		 * @param metadata JSON String representation of project metadata.
 		 * @return JSON representation of project as string.
+		 */
+		private static final String getProjectJSON(String projectName, String linkedGroupName, String linkedGroupId,
+				String metadata) {
+			return "{\"name\": \"" + projectName + "\", \"linkedGroup\": { \"name\": \"" + 
+				    linkedGroupName + "\", \"id\": \"" + linkedGroupId + "\"}, \"users\": [], \"metadata\": " + metadata + "}";
+		}
+		
+		/**
+		 * Helper method to get a JSON string representation of a project.
+		 * @param projectName Name of the project.
+		 * @param linkedGroupName Name of the group which gets linked to the project.
+		 * @param linkedGroupId Id of the group which gets linked to the project.
+		 * @return JSON representation of project as string. Does not use any project metadata.
 		 */
 		private static final String getProjectJSON(String projectName, String linkedGroupName, String linkedGroupId) {
 			return "{\"name\": \"" + projectName + "\", \"linkedGroup\": { \"name\": \"" + 

@@ -35,11 +35,19 @@ public class Project implements Serializable {
 	 * Identifier of the group linked to the project.
 	 */
 	private String groupIdentifier;
+	
+	/**
+	 * String containing the JSON representation of the project metadata.
+	 * This metadata can be used to store additional information on the project,
+	 * that might be system-specific.
+	 */
+	private String metadata;
 
-	public Project(String name, String groupName, String groupIdentifier) {
+	public Project(String name, String groupName, String groupIdentifier, String metadata) {
 		this.name = name;
 		this.groupName = groupName;
 		this.groupIdentifier = groupIdentifier;
+		this.metadata = metadata;
 	}
 
 	/**
@@ -69,6 +77,17 @@ public class Project implements Serializable {
 		// get id of linked group
 		this.containsKeyWithException(linkedGroup, "id");
 		this.groupIdentifier = (String) linkedGroup.get("id");
+		
+		// check if jsonProject contains metadata
+		if (project.containsKey("metadata")) {
+			// try converting to JSONObject (to check if valid JSON)
+			JSONObject metadataJSON = (JSONObject) project.get("metadata");
+			this.metadata = metadataJSON.toJSONString();
+		} else {
+			// no metadata given, just store an empty object
+			JSONObject empty = new JSONObject();
+			this.metadata = empty.toJSONString();
+		}
 		
 		if(project.containsKey("users")) {
 		    for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
@@ -124,6 +143,7 @@ public class Project implements Serializable {
 		jsonProject.put("name", this.name);
 		jsonProject.put("groupName", this.groupName);
 		jsonProject.put("groupIdentifier", this.groupIdentifier);
+		jsonProject.put("metadata", this.getMetadataAsJSONObject());
 
 		return jsonProject;
 	}
@@ -153,5 +173,21 @@ public class Project implements Serializable {
 	 */
 	public String getGroupIdentifier() {
 		return this.groupIdentifier;
+	}
+	
+	/**
+	 * Getter for the project metadata as a String.
+	 * @return JSON String representation of the project metadata.
+	 */
+	public String getMetadataString() {
+		return this.metadata;
+	}
+	
+	/**
+	 * Getter for the project metadata as a JSONObject.
+	 * @return Project metadata converted to JSONObject.
+	 */
+	public JSONObject getMetadataAsJSONObject() {
+		return (JSONObject) JSONValue.parse(this.metadata);
 	}
 }

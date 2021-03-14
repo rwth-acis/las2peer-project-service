@@ -302,7 +302,13 @@ public class ProjectService extends RESTService {
 				String newGroupId = (String) jsonBody.get("newGroupId");
 				String newGroupName = (String) jsonBody.get("newGroupName");
 				String identifier = projects_prefix;
-
+				
+				// check if user currently has access to project
+				if (!this.hasAccessToProject(projectName)) {
+					return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
+							.entity("User is no member of the project and thus not allowed to edit its linked group.").build();
+				}
+				
 				try {
 					Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
 					ProjectContainer cc = (ProjectContainer) stored.getContent();
