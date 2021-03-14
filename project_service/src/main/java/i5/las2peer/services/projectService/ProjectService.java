@@ -56,7 +56,12 @@ import i5.las2peer.services.projectService.project.Project;
 @ManualDeployment
 public class ProjectService extends RESTService {
 	private final static String projects_prefix = "projects";
+	
 	private String visibilityOfProjects;
+	
+	// service that should be called on specific events such as project creation
+	private String eventListenerService;
+	private EventManager eventManager;
 
 	@Override
 	protected void initResources() {
@@ -66,6 +71,8 @@ public class ProjectService extends RESTService {
 	public ProjectService() {
 		super();
 		setFieldValues(); // This sets the values of the configuration file
+		
+		this.eventManager = new EventManager(this.eventListenerService);
 	}
 	
 	/**
@@ -197,7 +204,12 @@ public class ProjectService extends RESTService {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
 
-			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
+			if (this.eventManager.sendProjectCreatedEvent(Context.get(), project.toJSONObject())) {
+			    return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
+			} else {
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+						.entity("Sending event to event listener service failed.").build();
+			}
 		}
 	}
 

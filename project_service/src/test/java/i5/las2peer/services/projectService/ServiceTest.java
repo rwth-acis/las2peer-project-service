@@ -12,13 +12,17 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import i5.las2peer.api.Service;
 import i5.las2peer.api.p2p.ServiceNameVersion;
+import i5.las2peer.api.security.ServiceAgent;
 import i5.las2peer.connectors.webConnector.WebConnector;
 import i5.las2peer.connectors.webConnector.client.ClientResponse;
 import i5.las2peer.connectors.webConnector.client.MiniClient;
 import i5.las2peer.p2p.LocalNode;
 import i5.las2peer.p2p.LocalNodeManager;
+import i5.las2peer.restMapper.RESTService;
 import i5.las2peer.security.GroupAgentImpl;
+import i5.las2peer.security.ServiceAgentImpl;
 import i5.las2peer.security.UserAgentImpl;
 import i5.las2peer.testing.MockAgentFactory;
 
@@ -88,11 +92,12 @@ public class ServiceTest {
 			
 			// start project service
 			// during testing, the specified service version does not matter
+			// the used .properties file can be found in project_service/properties folder
 			node.startService(new ServiceNameVersion(ProjectService.class.getName(), "1.0.0"), "a pass");
 			
 			// also start RMI test service
 			node.startService(new ServiceNameVersion(RMITestService.class.getName(), "1.0.0"), "a pass");
-
+		
 			// start connector
 			connector = new WebConnector(true, 0, false, 0); // port 0 means use system defined port
 			logStream = new ByteArrayOutputStream();
@@ -188,6 +193,10 @@ public class ServiceTest {
 			    client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
 			    result = client.sendRequest("POST", mainPath,  this.getProjectJSON("Project1_testPostProject", "groupName", this.identifierGroupA));
 			    Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			    
+			    // check if RMITestService event _onProjectCreated got called
+			    result = client.sendRequest("GET", "rmitestservice/onProjectCreated", "");
+			    Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
 			    
 			    // test with metadata
 			    JSONObject metadata = new JSONObject();

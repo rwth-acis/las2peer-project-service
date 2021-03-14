@@ -17,6 +17,7 @@ export SERVICE=${SERVICE_NAME}.${SERVICE_CLASS}@${SERVICE_VERSION}
 
 # set defaults for optional service parameters
 [[ -z "${VISIBILITY_OF_PROJECTS}" ]] && export VISIBILITY_OF_PROJECTS='own'
+[[ -z "${EVENT_LISTENER_SERVICE}" ]] && export EVENT_LISTENER_SERVICE=''
 
 # set defaults for optional web connector parameters
 [[ -z "${START_HTTP}" ]] && export START_HTTP='TRUE'
@@ -35,6 +36,7 @@ function set_in_service_config {
 }
 
 set_in_service_config visibilityOfProjects ${VISIBILITY_OF_PROJECTS}
+set_in_service_config eventListenerService ${EVENT_LISTENER_SERVICE}
 
 # configure web connector properties
 

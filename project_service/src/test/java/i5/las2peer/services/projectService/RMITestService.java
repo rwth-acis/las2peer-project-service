@@ -5,6 +5,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Response;
 
+import org.json.simple.JSONObject;
+
 import i5.las2peer.api.Context;
 import i5.las2peer.api.execution.InternalServiceException;
 import i5.las2peer.api.execution.ServiceAccessDeniedException;
@@ -22,11 +24,21 @@ import java.net.HttpURLConnection;
  * The RMI test service is a RESTService used to test the methods that the project service provides via RMI.
  * Therefore, the RMI test service provides a RESTful interface that can be used by an agent during the tests.
  * The different methods of this RESTful service will then invoke the methods that the project service provides for RMI.
+ * 
+ * Besides that, the RMI test service provides the methods called by the EventManager of the project service.
+ * When testing the project service and setting the event listener service to the RMI test service, these 
+ * methods will be called by the project service, when specific events occur. The RMI test service therefore also
+ * provides RESTful methods that can be used to check whether the event methods got called correctly by the project service.
  * @author Philipp
  *
  */
 @ServicePath("/rmitestservice")
 public class RMITestService extends RESTService {
+	
+	/**
+	 * If the _onProjectCreated method got called, the data received will be stored in this variable.
+	 */
+	private JSONObject _onProjectCreatedData = null;
 	
 	@Override
 	protected void initResources() {
@@ -54,6 +66,27 @@ public class RMITestService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 		}
 	    return Response.status(200).entity(access).build();
+	}
+	
+	/**
+	 * This is one of the methods, that the EventManager of the project service can call.
+	 * It should be called whenever a project got created.
+	 * @param projectJSON JSONObject containing the project that got created.
+	 */
+	public void _onProjectCreated(JSONObject projectJSON) {
+		this._onProjectCreatedData = projectJSON;
+	}
+	
+	/**
+	 * This method may be used to verify, if the _onProjectCreated method got called correctly by the 
+	 * project service.
+	 * @return 500 if _onProjectCreated was not called yet. 200 if it was already called.
+	 */
+	@GET
+	@Path("/onProjectCreated")
+	public Response onProjectCreated() {
+		if(this._onProjectCreatedData == null) return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		return Response.status(200).entity(this._onProjectCreatedData.toJSONString()).build();
 	}
 
 }

@@ -15,9 +15,10 @@ gradle clean build
 Service Properties
 --------
 
-| Property (Docker env variable)           | Possible values | Default          | Description |
-|------------------------------------------|-----------------|------------------|-------------|
-| visibilityOfProjects (TODO)              | all, own        | own              | Whether users are able to read-access all projects or only the ones they are a member of.|
+| Property (Docker env variable)                | Possible values | Default          | Description |
+|-----------------------------------------------|-----------------|------------------|-------------|
+| visibilityOfProjects (VISIBILITY_OF_PROJECTS) | all, own        | own              | Whether users are able to read-access all projects or only the ones they are a member of.|
+| eventListenerService (EVENT_LISTENER_SERVICE) | Service names   | -                | May be used to set a service as an event listener. This service will then be called on specified events, such as project creation. |
 
 Start
 --------
