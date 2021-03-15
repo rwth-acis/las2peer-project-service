@@ -109,7 +109,9 @@ export class DemoElement extends LitElement {
         <div style="flex: 1; margin-left: 1em">
           <h1>Demo information:</h1>
           <h3>Selected project:</h3>
-          <p style="max-width: 200px">${this.selectedProject}</p>
+          <p style="max-width: 200px" @click=${this.logx}>${this.selectedProject}</p>
+          <input id="metadataInput" placeholder="Random Test Metadata"></input>
+          <button style="max-width: 200px" @click=${this._triggerChange}>Change Metadata</button>
         </div>
       </div>
       
@@ -120,6 +122,18 @@ export class DemoElement extends LitElement {
 
   getStatusBarElement() {
     return this.shadowRoot.querySelector("#statusBar");
+  }
+
+  _triggerChange(event){
+    let events = new CustomEvent("metadata-changed", {
+      detail: {
+        message: "Changed Project",
+        project: this.selectedProject,
+        newMetadata: this.shadowRoot.querySelector("#metadataInput").value
+      },
+      bubbles: true
+    });
+    window.dispatchEvent(events);
   }
 
   /**

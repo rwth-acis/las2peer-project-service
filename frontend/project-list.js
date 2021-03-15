@@ -168,10 +168,15 @@ export class ProjectList extends LitElement {
     // use a default value for project service URL for local testing
     this.projectServiceURL = "http://127.0.0.1:8080";
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
-
+    window.addEventListener('metadata-changed', this._changeMetadata);
     this.disableAllProjects = false;
-
     this.showProjects(false);
+  }
+
+  _changeMetadata(event){
+    console.log(event.detail);
+    console.log("Project is: " + event.detail.project);
+    console.log("New Metadata is: " + event.detail.newMetadata);
   }
 
   render() {
