@@ -37,7 +37,7 @@ public class EventManager {
 	public EventManager(String eventListenerService) {
 		this.eventListenerService = eventListenerService;
 		
-		if(this.eventListenerService != null) {
+		if(this.eventListenerService != null && !this.eventListenerService.isEmpty()) {
 			this.eventListenerEnabled = true;
 		}
 	}
