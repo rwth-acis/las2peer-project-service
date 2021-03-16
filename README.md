@@ -20,6 +20,26 @@ Service Properties
 | visibilityOfProjects (VISIBILITY_OF_PROJECTS) | all, own        | own              | Whether users are able to read-access all projects or only the ones they are a member of.|
 | eventListenerService (EVENT_LISTENER_SERVICE) | Service names   | -                | May be used to set a service as an event listener. This service will then be called on specified events, such as project creation. |
 
+Event Listener Service
+--------
+The project service provides the possibility to set another las2peer service as an event listener service.
+On specific events (such as project-creation), the project service calls the configured event listener service via RMI.
+In order to work properly, the event listener service needs to implement the following public methods for the specific events:
+
+| Event             | Method                                    | Description |
+|-------------------|-------------------------------------------|----|
+| Project creation  | _onProjectCreated(JSONObject projectJSON) | Event gets fired whenever a new project gets created. The JSONObject will then be a JSON represention of the created project.
+
+RMI Methods
+--------
+Besides the event listener service, other services in general have the possibility to communicate with the project service via RMI.
+Therefore, the project service provides the following methods:
+
+| Method                                         | Description |
+|------------------------------------------------|-------------|
+| boolean hasAccessToProject(String projectName) | This method may be used to verify if a user is allowed to write-access a project. Returns true, if the calling agent has access to project. Returns false otherwise (or if project with given name does not exist). |
+
+
 Start
 --------
 
