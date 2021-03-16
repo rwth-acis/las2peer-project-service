@@ -8,10 +8,10 @@ export default class OnlineUserListHelper {
   /**
      * Load users that are online in the given Yjs room which is used by a SyncMeta instance.
      * @param yjsRoomName Name of the Yjs room which is used by SyncMeta.
-     * @param yjsResourcePath
      * @param yjsAddress
+     * @param yjsResourcePath
      */
-  static loadListOfSyncMetaOnlineUsers(yjsRoomName, yjsResourcePath, yjsAddress) {
+  static loadListOfSyncMetaOnlineUsers(yjsRoomName, yjsAddress, yjsResourcePath) {
     // get currently active users in yjs room
     return new Promise((resolve) => Y({
       db: {

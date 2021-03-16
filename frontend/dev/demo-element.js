@@ -105,7 +105,7 @@ export class DemoElement extends LitElement {
     ></las2peer-frontend-statusbar>
       <h2>Project list with "All Projects" enabled</h2>
       <div style="display: flex">
-        <project-list @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
+        <project-list id="pl1" @projects-loaded=${this._onProjectsLoaded} @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
         <div style="flex: 1; margin-left: 1em">
           <h1>Demo information:</h1>
           <h3>Selected project:</h3>
@@ -145,6 +145,21 @@ export class DemoElement extends LitElement {
     console.log("onProjectSelected called");
     this.selectedProject = JSON.stringify(event.detail.project);
     console.log(this.selectedProject);
+  }
+
+  /**
+   * Example for using the online user list.
+   * Make sure that _onProjectsLoaded is called on the projects-loaded event of the project-list.
+   */
+  _onProjectsLoaded(event) {
+    let projects = event.detail.projects;
+    
+    // uncomment this, if you want to test the online user list
+    /*let mapProjectRooms = {};
+    for(let project of projects) {
+        mapProjectRooms[project.name] = ["exampleYjsRoom"];
+    }
+    this.shadowRoot.getElementById("pl1").setOnlineUserListYjsRooms(mapProjectRooms);*/
   }
 }
 

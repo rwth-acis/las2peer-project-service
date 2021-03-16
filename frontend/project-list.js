@@ -10,6 +10,7 @@ import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-tabs';
 import '@polymer/iron-icon/iron-icon.js';
 import '@polymer/iron-icons/social-icons.js';
+import OnlineUserListHelper from './util/online-user-list-helper'
 
 import Auth from './util/auth';
 
@@ -155,7 +156,23 @@ export class ProjectList extends LitElement {
       */
       contactServiceURL: {
         type: String
-      }
+      },
+
+      /**
+       * Yjs address used for the online user list.
+       * Only required if the online user list is used.
+       */
+      yjsAddress: {
+        type: String
+      },
+
+      /**
+       * Yjs resource path used for the online user list.
+       * Only required if the online user list is used.
+       */
+      yjsResourcePath: {
+        type: String
+      },
     };
   }
 
@@ -171,6 +188,8 @@ export class ProjectList extends LitElement {
     window.addEventListener('metadata-changed', this._changeMetadata);
     this.disableAllProjects = false;
     this.showProjects(false);
+    this.yjsAddress = "http://127.0.0.1:1234";
+    this.yjsResourcePath = "./socket.io";
   }
 
   _changeMetadata(event){
@@ -206,8 +225,8 @@ export class ProjectList extends LitElement {
               <div class="project-item-card-content">
                 <p class="project-item-name">${project.name}</p>
                 <div style="margin-left: auto; display: flex">
-                  ${this.getListOfProjectOnlineUsers(project.id) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
-                  <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.id)}</p>
+                ${this.getListOfProjectOnlineUsers(project.name) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
+                  <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.name)}</p>
                   <slot name="project-${project.id}"></slot>
                   <iron-icon icon="social:group" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
                     @click=${() => this.openConnectedGroupDialog(project)}></iron-icon>
@@ -406,6 +425,14 @@ export class ProjectList extends LitElement {
       // set projects that should be shown (currently all)
       this.listedProjects = data.projects;
 
+      let event = new CustomEvent("projects-loaded", {
+        detail: {
+          projects: this.projects
+        },
+        bubbles: true
+      });
+      this.dispatchEvent(event);
+
       // load online users
   /*    for(let i in this.projects) {
         this.loadListOfProjectOnlineUsers(this.projects[i].id);
@@ -554,20 +581,41 @@ export class ProjectList extends LitElement {
         });
       });
     }
-    
-
   }
 
   /**
+   * Call this method with a map, mapping project names to lists of Yjs room names, and then these Yjs room names
+   * will be used for the online user list.
+   * @param mapProjectRooms Map, mapping project names to lists of Yjs room names, where SyncMeta is running.
+   */
+  setOnlineUserListYjsRooms(mapProjectRooms) {
+    this.projectsOnlineUser = {};
+
+    for(let projectName of Object.keys(mapProjectRooms)) {
+      let roomNames = mapProjectRooms[projectName];
+      this.projectsOnlineUser[projectName] = [];
+      for(let roomName of roomNames) {
+        OnlineUserListHelper.loadListOfSyncMetaOnlineUsers(roomName, this.yjsAddress, this.yjsResourcePath).then(list => {
+          for(let username of list) {
+            if(!this.projectsOnlineUser[projectName].includes(username)) this.projectsOnlineUser[projectName].push(username);
+          }
+          this.requestUpdate();
+        });
+      }
+    }
+  }
+
+
+  /**
    * Creates a string which contains a list of the users that are online in the
-   * project with the given id.
-   * @param projectId
+   * project with the given name.
+   * @param projectName
    * @returns {string} String containing a list of online users in the given project.
    */
-  getListOfProjectOnlineUsers(projectId) {
+  getListOfProjectOnlineUsers(projectName) {
     let s = "";
-    for(let i in this.projectsOnlineUser[projectId]) {
-      s += this.projectsOnlineUser[projectId][i] + ",";
+    for(let i in this.projectsOnlineUser[projectName]) {
+      s += this.projectsOnlineUser[projectName][i] + ",";
     }
     if(s) {
       s = s.substr(0,s.length-1);
