@@ -9,10 +9,10 @@ import org.json.simple.parser.ParseException;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.security.Agent;
+
 /**
  * (Data-)Class for Projects. Provides means to convert JSON to Object and
- * Object to JSON.
- * TODO: check if this javadoc is still correct later
+ * Object to JSON. TODO: check if this javadoc is still correct later
  */
 public class Project implements Serializable {
 
@@ -35,11 +35,11 @@ public class Project implements Serializable {
 	 * Identifier of the group linked to the project.
 	 */
 	private String groupIdentifier;
-	
+
 	/**
-	 * String containing the JSON representation of the project metadata.
-	 * This metadata can be used to store additional information on the project,
-	 * that might be system-specific.
+	 * String containing the JSON representation of the project metadata. This
+	 * metadata can be used to store additional information on the project, that
+	 * might be system-specific.
 	 */
 	private String metadata;
 
@@ -56,7 +56,8 @@ public class Project implements Serializable {
 	 * 
 	 * @param creator     User that creates the project.
 	 * @param jsonProject JSON representation of the project to store.
-	 * @throws ParseException If parsing went wrong or one of the keys is missing in the given JSON representation.
+	 * @throws ParseException If parsing went wrong or one of the keys is missing in
+	 *                        the given JSON representation.
 	 */
 	public Project(Agent creator, String jsonProject) throws ParseException {
 		JSONObject project = (JSONObject) JSONValue.parseWithException(jsonProject);
@@ -69,15 +70,15 @@ public class Project implements Serializable {
 		// group and users to project from said group
 		this.containsKeyWithException(project, "linkedGroup");
 		JSONObject linkedGroup = (JSONObject) project.get("linkedGroup");
-		
+
 		// get name of linked group
 		this.containsKeyWithException(linkedGroup, "name");
 		this.groupName = (String) linkedGroup.get("name");
-		
+
 		// get id of linked group
 		this.containsKeyWithException(linkedGroup, "id");
 		this.groupIdentifier = (String) linkedGroup.get("id");
-		
+
 		// check if jsonProject contains metadata
 		if (project.containsKey("metadata")) {
 			// try converting to JSONObject (to check if valid JSON)
@@ -88,35 +89,38 @@ public class Project implements Serializable {
 			JSONObject empty = new JSONObject();
 			this.metadata = empty.toJSONString();
 		}
-		
-		if(project.containsKey("users")) {
-		    for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
-			    String userName = ((JSONArray) project.get("users")).get(i).toString();
-			    try {
-				    String userId = Context.get().getUserAgentIdentifierByLoginName(userName);
-				    System.out.println(userId);
-				    // this.users.add(userId);
-			    } catch (Exception q) {
-				    System.out.println(q + "User does not exist?");
-			    }
-			    /*
-			     * if(user != true) {
-			     * 
-			     * }
-			     */
-		    }
+
+		if (project.containsKey("users")) {
+			for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
+				String userName = ((JSONArray) project.get("users")).get(i).toString();
+				try {
+					String userId = Context.get().getUserAgentIdentifierByLoginName(userName);
+					System.out.println(userId);
+					// this.users.add(userId);
+				} catch (Exception q) {
+					System.out.println(q + "User does not exist?");
+				}
+				/*
+				 * if(user != true) {
+				 * 
+				 * }
+				 */
+			}
 		}
 	}
-	
+
 	/**
-	 * Checks if the given JSONObject contains the given key.
-	 * If key does not exist, then a ParseException is thrown.
+	 * Checks if the given JSONObject contains the given key. If key does not exist,
+	 * then a ParseException is thrown.
+	 * 
 	 * @param json JSONObject where the key should be searched.
-	 * @param key Key that should be searched in given JSONObject.
-	 * @throws ParseException If given JSONObject does not contain given key, a ParseException is thrown.
+	 * @param key  Key that should be searched in given JSONObject.
+	 * @throws ParseException If given JSONObject does not contain given key, a
+	 *                        ParseException is thrown.
 	 */
 	private static void containsKeyWithException(JSONObject json, String key) throws ParseException {
-		if (!json.containsKey(key)) throw new ParseException(0, "Attribute '" + key + "' of project is missing.");
+		if (!json.containsKey(key))
+			throw new ParseException(0, "Attribute '" + key + "' of project is missing.");
 	}
 
 	/**
@@ -128,6 +132,15 @@ public class Project implements Serializable {
 	public void changeGroup(String groupIdentifier, String groupName) {
 		this.groupIdentifier = groupIdentifier;
 		this.groupName = groupName;
+	}
+
+	/**
+	 * Changes metadata of project.
+	 * 
+	 * @param newMetadata Metadata to replace the old one.
+	 */
+	public void changeMetadata(String newMetadata) {
+		this.metadata = newMetadata;
 	}
 
 	/**
@@ -174,17 +187,19 @@ public class Project implements Serializable {
 	public String getGroupIdentifier() {
 		return this.groupIdentifier;
 	}
-	
+
 	/**
 	 * Getter for the project metadata as a String.
+	 * 
 	 * @return JSON String representation of the project metadata.
 	 */
 	public String getMetadataString() {
 		return this.metadata;
 	}
-	
+
 	/**
 	 * Getter for the project metadata as a JSONObject.
+	 * 
 	 * @return Project metadata converted to JSONObject.
 	 */
 	public JSONObject getMetadataAsJSONObject() {

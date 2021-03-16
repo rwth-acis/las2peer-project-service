@@ -129,7 +129,7 @@ export class DemoElement extends LitElement {
       detail: {
         message: "Changed Project",
         project: this.selectedProject,
-        newMetadata: this.shadowRoot.querySelector("#metadataInput").value
+        newMetadata: {"random":this.shadowRoot.querySelector("#metadataInput").value}
       },
       bubbles: true
     });

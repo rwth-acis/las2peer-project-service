@@ -193,9 +193,37 @@ export class ProjectList extends LitElement {
   }
 
   _changeMetadata(event){
-    console.log(event.detail);
     console.log("Project is: " + event.detail.project);
     console.log("New Metadata is: " + event.detail.newMetadata);
+    var project = JSON.parse(event.detail.project);
+    var projectName =  project.name;
+    var oldMetadata =  project.metadata;
+    var newMetadata =  event.detail.newMetadata;
+    // due to my lack of experience in frontend programming, I didnt know how to access the this.projectserviceurl var :( 
+    fetch("http://127.0.0.1:8080"+ "/projects/changeMetadata/", {
+      method: "POST",
+      headers: Auth.getAuthHeaderWithSub(),
+      body: JSON.stringify({
+        "access_token": Auth.getAccessToken(),
+        "projectName": projectName,
+        "oldMetadata": oldMetadata,
+        "newMetadata": newMetadata
+      })
+    }).then( response => {
+        if(!response.ok) throw Error(response.status);
+          return response.json();
+    }).then(data => {
+        console.log(data);
+    }).catch(error => {
+      if(error.message == "401") {
+        // user is not authorized
+        // maybe the access token has expired
+        Auth.removeAuthDataFromLocalStorage();
+     //   location.reload();
+      } else {
+        console.log(error);
+      }
+    });
   }
 
   render() {
