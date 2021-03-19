@@ -14,12 +14,15 @@ import javax.ws.rs.core.Response.Status;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.ManualDeployment;
+import i5.las2peer.api.ServiceException;
 import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AgentNotFoundException;
 import i5.las2peer.api.security.AgentAccessDeniedException;
+import i5.las2peer.api.security.AgentLockedException;
 import i5.las2peer.api.security.AgentOperationFailedException;
 import i5.las2peer.api.security.AnonymousAgent;
 import i5.las2peer.api.security.GroupAgent;
+import i5.las2peer.api.security.ServiceAgent;
 import i5.las2peer.api.logging.MonitoringEvent;
 import i5.las2peer.api.persistency.Envelope;
 import i5.las2peer.api.persistency.EnvelopeAccessDeniedException;
@@ -63,6 +66,10 @@ public class ProjectService extends RESTService {
 	private String eventListenerService;
 	private EventManager eventManager;
 
+	private String serviceGroupId;
+	private String oldServiceAgentId;
+	private String oldServiceAgentPw;
+
 	@Override
 	protected void initResources() {
 		getResourceConfig().register(this);
@@ -71,8 +78,35 @@ public class ProjectService extends RESTService {
 	public ProjectService() {
 		super();
 		setFieldValues(); // This sets the values of the configuration file
-
+		System.out.println(serviceGroupId);
 		this.eventManager = new EventManager(this.eventListenerService);
+	}
+
+	public GroupAgent getServiceGroupAgent() {
+		try {
+			return (GroupAgent) Context.get().requestAgent(this.serviceGroupId, Context.get().getServiceAgent());
+		} catch (AgentAccessDeniedException | AgentNotFoundException | AgentOperationFailedException e) {
+			// TODO: error handling
+			try {
+				// Dont know if this is the best solution, but works, the user just needs to
+				// take care of the old service agent id field + pw
+				// Note: when calling this method at the same time, sometimes a problem occurs
+				// when trying to store groups at the same time
+
+				System.out.println("Adding service agent " + Context.get().getServiceAgent().getIdentifier());
+
+				ServiceAgent sAgent = (ServiceAgent) Context.get().fetchAgent(this.oldServiceAgentId);
+				sAgent.unlock(this.oldServiceAgentPw);
+				GroupAgent gAgent = (GroupAgent) Context.get().requestAgent(this.serviceGroupId, sAgent);
+				gAgent.addMember(Context.get().getServiceAgent());
+				Context.get().storeAgent(gAgent);
+				return gAgent;
+			} catch (Exception e1) {
+				System.out.println("Getting Service Group Agent failed because of:" + e1);
+				return null;
+			}
+			return null;
+		}
 	}
 
 	/**
@@ -121,6 +155,11 @@ public class ProjectService extends RESTService {
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		} else {
+			GroupAgent serviceGroupAgent = getServiceGroupAgent();
+			if (serviceGroupAgent == null)
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+						.entity("Cannot access service group agent.").build();
+
 			Agent agent = Context.getCurrent().getMainAgent();
 			Envelope env = null;
 			Envelope env2 = null;
@@ -189,21 +228,21 @@ public class ProjectService extends RESTService {
 				try {
 					// try to add project to project list (with ServiceAgent)
 					System.out.println("A");
-					env2 = Context.get().requestEnvelope(identifier2, Context.get().getServiceAgent());
+					env2 = Context.get().requestEnvelope(identifier2, serviceGroupAgent);
 					cc = (ProjectContainer) env2.getContent();
 					cc.addProject(project);
 					env2.setContent(cc);
-					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
+					Context.get().storeEnvelope(env2, serviceGroupAgent);
 					System.out.println("B");
 				} catch (EnvelopeNotFoundException e) {
 					// create new project list (with ServiceAgent)
 					System.out.println("C");
 					cc = new ProjectContainer();
-					env2 = Context.get().createEnvelope(identifier2, Context.get().getServiceAgent());
+					env2 = Context.get().createEnvelope(identifier2, serviceGroupAgent);
 					env2.setPublic();
 					cc.addProject(project);
 					env2.setContent(cc);
-					Context.get().storeEnvelope(env2, Context.get().getServiceAgent());
+					Context.get().storeEnvelope(env2, serviceGroupAgent);
 				}
 			} catch (EnvelopeOperationFailedException | EnvelopeAccessDeniedException e1) {
 				System.out.println(e1);
@@ -238,10 +277,15 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
 		}
 
+		GroupAgent serviceGroupAgent = getServiceGroupAgent();
+		if (serviceGroupAgent == null)
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
+					.build();
+
 		String identifier = projects_prefix;
 		JSONObject result = new JSONObject();
 		try {
-			Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
+			Envelope stored = Context.get().requestEnvelope(identifier, serviceGroupAgent);
 			ProjectContainer cc = (ProjectContainer) stored.getContent();
 			// read all projects from the project list
 			List<Project> projects = cc.getAllProjects();

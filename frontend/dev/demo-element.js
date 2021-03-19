@@ -116,7 +116,7 @@ export class DemoElement extends LitElement {
       </div>
       
       <h2>Project list with "All Projects" disabled</h2>
-      <project-list disableAllProjects="true"></project-list>
+    <!--  <project-list disableAllProjects="true"></project-list> -->
     `;
   }
 
