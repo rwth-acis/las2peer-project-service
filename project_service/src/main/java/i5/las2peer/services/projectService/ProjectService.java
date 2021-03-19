@@ -14,11 +14,9 @@ import javax.ws.rs.core.Response.Status;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.ManualDeployment;
-import i5.las2peer.api.ServiceException;
 import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AgentNotFoundException;
 import i5.las2peer.api.security.AgentAccessDeniedException;
-import i5.las2peer.api.security.AgentLockedException;
 import i5.las2peer.api.security.AgentOperationFailedException;
 import i5.las2peer.api.security.AnonymousAgent;
 import i5.las2peer.api.security.GroupAgent;
@@ -105,7 +103,6 @@ public class ProjectService extends RESTService {
 				System.out.println("Getting Service Group Agent failed because of:" + e1);
 				return null;
 			}
-			return null;
 		}
 	}
 
