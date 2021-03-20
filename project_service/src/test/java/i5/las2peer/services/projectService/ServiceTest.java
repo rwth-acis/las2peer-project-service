@@ -311,6 +311,73 @@ public class ServiceTest {
 	}
 	
 	@Test
+	public void testChangeMetadata() {
+		try {
+			MiniClient client = new MiniClient();
+			client.setConnectorEndpoint(connector.getHttpEndpoint());
+			
+			// try to change metadata without being logged in
+			ClientResponse result = client.sendRequest("POST", mainPath + "changeMetadata", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, result.getHttpCode());
+
+			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			
+			// try to change metadata but let body empty
+			result = client.sendRequest("POST", mainPath + "changeMetadata", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			
+			// create a new project for testing
+			String projectName = "testChangeMetadata_Project1";
+			JSONObject metadata = new JSONObject();
+			metadata.put("attr1", "value1");
+			result = client.sendRequest("POST", mainPath, this.getProjectJSON(projectName, "groupName",
+					this.identifierGroupA, metadata.toJSONString()));
+			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			
+			// change metadata
+			JSONObject body = new JSONObject();
+			body.put("projectName", projectName);
+			body.put("oldMetadata", metadata);
+			JSONObject metadataUpdated = new JSONObject();
+			metadataUpdated.put("attr1", "value2");
+			body.put("newMetadata", metadataUpdated);
+			result = client.sendRequest("POST", mainPath + "changeMetadata", body.toJSONString());
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			
+			// get the project and check if metadata got really updated
+			result = client.sendRequest("GET", mainPath, "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			JSONObject resultJSON = (JSONObject) JSONValue.parse(result.getResponse().trim());
+			JSONArray projectsJSON = (JSONArray) resultJSON.get("projects");
+			boolean containsProject = false;
+			for(Object p : projectsJSON) {
+				JSONObject projectJSON = (JSONObject) p;
+				if(((String)projectJSON.get("name")).equals(projectName)) {
+					String metadataString = ((JSONObject) projectJSON.get("metadata")).toJSONString();
+					Assert.assertEquals(metadataUpdated.toJSONString(), metadataString);
+					containsProject = true;
+					break;
+				}
+			}
+			Assert.assertEquals(true, containsProject);
+			
+			// try to change metadata with a non-member of the project
+			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
+			result = client.sendRequest("POST", mainPath + "changeMetadata", body.toJSONString());
+			Assert.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getHttpCode());
+			
+			// test with incorrect oldMetadata value
+			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			body.put("oldMetadata", "");
+			result = client.sendRequest("POST", mainPath + "changeMetadata", body.toJSONString());
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+		} catch (Exception e) {
+			e.printStackTrace();
+			Assert.fail(e.toString());
+		}
+	}
+	
+	@Test
 	public void testDeleteProject() {
 		try {
 			MiniClient client = new MiniClient();
