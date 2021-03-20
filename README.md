@@ -19,6 +19,7 @@ Service Properties
 |-----------------------------------------------|-----------------|------------------|-------------|
 | visibilityOfProjects (VISIBILITY_OF_PROJECTS) | all, own        | own              | Whether users are able to read-access all projects or only the ones they are a member of.|
 | eventListenerService (EVENT_LISTENER_SERVICE) | Service names   | -                | May be used to set a service as an event listener. This service will then be called on specified events, such as project creation. |
+| serviceGroupId | | - | Needs to be set to the identifier of a group agent where the service agent is a member of. This group will be used to store envelopes. |
 
 Event Listener Service
 --------
@@ -28,7 +29,8 @@ In order to work properly, the event listener service needs to implement the fol
 
 | Event             | Method                                    | Description |
 |-------------------|-------------------------------------------|----|
-| Project creation  | _onProjectCreated(JSONObject projectJSON) | Event gets fired whenever a new project gets created. The JSONObject will then be a JSON represention of the created project.
+| Project creation  | _onProjectCreated(JSONObject projectJSON) | Event gets fired whenever a new project gets created. The JSONObject will then be a JSON representation of the created project. |
+| Project deletion  | _onProjectDeleted(JSONObject projectJSON) | Event gets fired whenever a project gets deleted. The JSONObject will then be a JSON representation of the deleted project. |
 
 RMI Methods
 --------
