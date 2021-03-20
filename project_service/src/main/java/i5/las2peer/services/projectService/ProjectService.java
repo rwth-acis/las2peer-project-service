@@ -7,6 +7,7 @@ import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -42,6 +43,7 @@ import org.json.simple.parser.ParseException;
 import org.json.simple.JSONValue;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 
 import i5.las2peer.services.projectService.project.Project;
 
@@ -56,7 +58,7 @@ import i5.las2peer.services.projectService.project.Project;
 @ServicePath("/projects")
 @ManualDeployment
 public class ProjectService extends RESTService {
-	private final static String projects_prefix = "projects";
+	public final static String projects_prefix = "projects";
 
 	private String visibilityOfProjects;
 
@@ -115,7 +117,7 @@ public class ProjectService extends RESTService {
 	 *         with given name does not exist).
 	 */
 	public boolean hasAccessToProject(String projectName) {
-		String identifier = projects_prefix + "_" + projectName;
+		String identifier = getProjectIdentifier(projectName);
 		try {
 			Context.getCurrent().requestEnvelope(identifier);
 		} catch (EnvelopeAccessDeniedException e) {
@@ -171,7 +173,7 @@ public class ProjectService extends RESTService {
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 			}
 
-			String identifier = projects_prefix + "_" + project.getName();
+			String identifier = getProjectIdentifier(project.getName());
 			String identifier2 = projects_prefix;
 
 			try {
@@ -324,6 +326,60 @@ public class ProjectService extends RESTService {
 			// Couldnt build due to logging error so just left it out for now...
 			// logger.log(Level.SEVERE, "Can't persist to network storage!", e);
 			return Response.status(Status.BAD_REQUEST).entity("Unknown error occured: " + e.getMessage()).build();
+		}
+	}
+	
+	/**
+	 * Deleted the project with the given name.
+	 * @return Response containing the status code
+	 */
+	@DELETE
+	@Path("/{projectName}")
+	@ApiOperation(value = "Deletes a project from storage.")
+	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK, project deleted."),
+			@ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "Agent is no project member and not allowed to delete it."),
+			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find a project with the given name."),
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
+	public Response deleteProject(@PathParam("projectName") String projectName) {		
+		Agent agent = Context.getCurrent().getMainAgent();
+		
+		GroupAgent serviceGroupAgent = getServiceGroupAgent();
+		if (serviceGroupAgent == null)
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
+					.build();
+		
+		String projectIdentifier = getProjectIdentifier(projectName);
+		Project deletedProject;
+		try {
+			// remove project from "project envelope"
+			Envelope env = Context.get().requestEnvelope(projectIdentifier, agent);
+			ProjectContainer cc = (ProjectContainer) env.getContent();
+			deletedProject = cc.getProjectByName(projectName);
+			cc.removeProject(projectName);
+			env.setContent(cc);
+			Context.get().storeEnvelope(env, agent);
+			
+			// also update project list and remove the project there
+			Envelope envList = Context.get().requestEnvelope(projects_prefix, serviceGroupAgent);
+			ProjectContainer ccList = (ProjectContainer) env.getContent();
+			ccList.removeProject(projectName);
+			envList.setContent(ccList);
+			Context.get().storeEnvelope(envList, serviceGroupAgent);
+		} catch (EnvelopeAccessDeniedException e) {
+			return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
+					.entity("Agent is no project member and not allowed to delete it.").build();
+		} catch (EnvelopeNotFoundException e) {
+			return Response.status(HttpURLConnection.HTTP_NOT_FOUND)
+					.entity("Could not find a project with the given name.").build();
+		} catch (EnvelopeOperationFailedException e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		}
+		
+		if (this.eventManager.sendProjectDeletedEvent(Context.get(), deletedProject.toJSONObject())) {
+			return Response.status(HttpURLConnection.HTTP_OK).build();
+		} else {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+					.entity("Sending event to event listener service failed.").build();
 		}
 	}
 
@@ -535,5 +591,14 @@ public class ProjectService extends RESTService {
 
 			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 		}
+	}
+	
+	/**
+	 * Returns the identifier of the envelope for the project with the given name.
+	 * @param projectName Name of the project
+	 * @return The identifier of the envelope for the project with the given name.
+	 */
+	public static String getProjectIdentifier(String projectName) {
+	    return projects_prefix + "_" + projectName;
 	}
 }

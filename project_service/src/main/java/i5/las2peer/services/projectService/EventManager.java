@@ -21,6 +21,7 @@ import i5.las2peer.api.execution.ServiceNotFoundException;
 public class EventManager {
 	
 	private static final String EVENT_METHOD_PROJECT_CREATED = "_onProjectCreated";
+	private static final String EVENT_METHOD_PROJECT_DELETED = "_onProjectDeleted";
 	
 	/**
 	 * Name of the service that should be called on specific events.
@@ -50,6 +51,16 @@ public class EventManager {
 	 */
 	public boolean sendProjectCreatedEvent(Context context, JSONObject projectJSON) {
 		return invokeEventListenerService(context, EVENT_METHOD_PROJECT_CREATED, projectJSON);
+	}
+	
+	/**
+	 * Sends the project-deleted event for the given project to the event listener service.
+	 * @param context Context used for invoking the event listener service.
+	 * @param projectJSON Project that got deleted as a JSONObject.
+	 * @return If event listener is disabled, then always true. Otherwise only true, if event was sent successfully.
+	 */
+	public boolean sendProjectDeletedEvent(Context context, JSONObject projectJSON) {
+		return invokeEventListenerService(context, EVENT_METHOD_PROJECT_DELETED, projectJSON);
 	}
 	
 	/**

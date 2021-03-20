@@ -40,6 +40,11 @@ public class RMITestService extends RESTService {
 	 */
 	private JSONObject _onProjectCreatedData = null;
 	
+	/**
+	 * If the _onProjectDeleted method got called, the data received will be stored in this variable.
+	 */
+	private JSONObject _onProjectDeletedData = null;
+	
 	@Override
 	protected void initResources() {
 		getResourceConfig().register(this);
@@ -78,6 +83,15 @@ public class RMITestService extends RESTService {
 	}
 	
 	/**
+	 * This is one of the methods, that the EventManager of the project service can call.
+	 * It should be called whenever a project got deleted.
+	 * @param projectJSON JSONObject containing the project that got deleted.
+	 */
+	public void _onProjectDeleted(JSONObject projectJSON) {
+		this._onProjectDeletedData = projectJSON;
+	}
+	
+	/**
 	 * This method may be used to verify, if the _onProjectCreated method got called correctly by the 
 	 * project service.
 	 * @return 500 if _onProjectCreated was not called yet. 200 if it was already called.
@@ -87,6 +101,18 @@ public class RMITestService extends RESTService {
 	public Response onProjectCreated() {
 		if(this._onProjectCreatedData == null) return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 		return Response.status(200).entity(this._onProjectCreatedData.toJSONString()).build();
+	}
+	
+	/**
+	 * This method may be used to verify, if the _onProjectDeleted method got called correctly by the 
+	 * project service.
+	 * @return 500 if _onProjectDeleted was not called yet. 200 if it was already called.
+	 */
+	@GET
+	@Path("/onProjectDeleted")
+	public Response onProjectDeleted() {
+		if(this._onProjectDeletedData == null) return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		return Response.status(200).entity(this._onProjectDeletedData.toJSONString()).build();
 	}
 
 }

@@ -309,6 +309,56 @@ public class ServiceTest {
 			Assert.fail(e.toString());
 		}
 	}
+	
+	@Test
+	public void testDeleteProject() {
+		try {
+			MiniClient client = new MiniClient();
+			client.setConnectorEndpoint(connector.getHttpEndpoint());
+
+			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			
+			// try to delete a non-existing project
+			ClientResponse result = client.sendRequest("DELETE", mainPath + "not-existing-project", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_NOT_FOUND, result.getHttpCode());
+			
+			// create project using adam and group A
+			String projectName = "Project1_testDeleteProject";
+			result = client.sendRequest("POST", mainPath,
+					this.getProjectJSON(projectName, this.nameGroupA, this.identifierGroupA));
+			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			
+			// count number of projects that adam has access to
+			result = client.sendRequest("GET", mainPath, "");
+			JSONArray jsonProjects = (JSONArray) ((JSONObject) JSONValue.parse(result.getResponse().trim())).get("projects");
+			int numProjects = jsonProjects.size();
+			
+			// now try to delete this project using a non-member (e.g. eve is no member of group A)
+			// in this case, eve should not be allowed to delete the project
+			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
+			result = client.sendRequest("DELETE", mainPath + projectName, "");
+			Assert.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getHttpCode());
+			
+			// now try to delete it again but now try with adam
+			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
+			result = client.sendRequest("DELETE", mainPath + projectName, "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			
+			// check if RMITestService event _onProjectCreated got called
+			result = client.sendRequest("GET", "rmitestservice/onProjectDeleted", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			
+			// count number of projects that adam has access to again
+			// should be one less than before
+			result = client.sendRequest("GET", mainPath, "");
+			JSONArray jsonProjects2 = (JSONArray) ((JSONObject) JSONValue.parse(result.getResponse().trim())).get("projects");
+			int numProjects2 = jsonProjects2.size();
+			Assert.assertEquals(numProjects-1, numProjects2);
+		} catch (Exception e) {
+			e.printStackTrace();
+			Assert.fail(e.toString());
+		}
+	}
 
 	/**
 	 * Helper method to get a JSON string representation of a project.

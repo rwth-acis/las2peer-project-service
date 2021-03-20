@@ -38,6 +38,14 @@ public class ProjectContainer implements Serializable {
 	public void removeProject(Project p) {
 		allProjects.remove(p.getName());
 	}
+	
+	public void removeProject(String projectName) {
+		allProjects.remove(projectName);
+	}
+	
+	public Project getProjectByName(String projectName) {
+		return allProjects.get(projectName);
+	}
 
 	public List<Project> getAllProjects() {
 		return new ArrayList<>(allProjects.values());
