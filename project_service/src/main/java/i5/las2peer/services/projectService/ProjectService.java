@@ -361,7 +361,7 @@ public class ProjectService extends RESTService {
 			
 			// also update project list and remove the project there
 			Envelope envList = Context.get().requestEnvelope(projects_prefix, serviceGroupAgent);
-			ProjectContainer ccList = (ProjectContainer) env.getContent();
+			ProjectContainer ccList = (ProjectContainer) envList.getContent();
 			ccList.removeProject(projectName);
 			envList.setContent(ccList);
 			Context.get().storeEnvelope(envList, serviceGroupAgent);

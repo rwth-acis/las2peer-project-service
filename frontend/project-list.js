@@ -44,6 +44,14 @@ export class ProjectList extends LitElement {
     .paper-button-blue[disabled] {
       background: #e1e1e1;
     }
+    .button-danger {
+      height: 2.5em;
+      color: rgb(240,248,255);
+      background: rgb(255,93,84);
+    }
+    .button-danger:hover {
+      background: rgb(216,81,73);
+    }
     .top-menu {
       display: flex;
       align-items: center;
@@ -173,6 +181,14 @@ export class ProjectList extends LitElement {
       yjsResourcePath: {
         type: String
       },
+
+      /**
+       * If the user opens the project options dialog, then the project
+       * for which the dialog is opened gets stored in this variable.
+       */
+      projectOptionsSelected: {
+        type: Object
+      }
     };
   }
 
@@ -256,8 +272,8 @@ export class ProjectList extends LitElement {
                 ${this.getListOfProjectOnlineUsers(project.name) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
                   <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.name)}</p>
                   <slot name="project-${project.id}"></slot>
-                  <iron-icon icon="social:group" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
-                    @click=${() => this.openConnectedGroupDialog(project)}></iron-icon>
+                  <iron-icon icon="icons:more-vert" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
+                    @click=${() => this.openProjectOptionsDialog(project)}></iron-icon>
                 </div>
               </div>
             </paper-card>
@@ -283,7 +299,7 @@ export class ProjectList extends LitElement {
         </div>
       </paper-dialog>
       
-      <paper-dialog id="dialog-connected-group">
+      <paper-dialog id="dialog-project-options">
         <h2>Connected Group</h2>
         <p>The project <span id="connected-group-project-name">Project name</span> is connected to the las2peer group:</p>
         <div style="display: flex">
@@ -298,8 +314,26 @@ export class ProjectList extends LitElement {
           <iron-icon icon="editor:mode-edit" class="icon" style="margin-top: auto; margin-bottom: auto; margin-left: 1em"
             @click=${this._onEditConnectedGroupClicked}></iron-icon>
         </div>
+
+        <h2>Danger Zone</h2>
+        <div style="display: flex; margin-top: 0">
+          <p>Delete this project. Please note that a project cannot be restored after deletion.</p>
+          <paper-button class="button-danger" @click=${this.showDeleteProjectDialog} style="margin-top: auto; margin-bottom: auto">Delete</paper-button>
+        </div>
         <div class="buttons">
           <paper-button dialog-confirm @click=${this._onGroupChanged}>OK</paper-button>
+        </div>
+      </paper-dialog>
+
+      <!-- Dialog: Are you sure to delete the project? -->
+      <paper-dialog id="dialog-delete-project" modal>
+        <h4>Delete Project</h4>
+        <div>
+        Are you sure that you want to delete the project?
+        </div>
+        <div class="buttons">
+          <paper-button dialog-dismiss>Cancel</paper-button>
+          <paper-button @click=${this._deleteProject} dialog-confirm autofocus>Yes</paper-button>
         </div>
       </paper-dialog>
       
@@ -311,6 +345,9 @@ export class ProjectList extends LitElement {
       <!-- Toasts -->
       <!-- Toast for successful creation of project -->
       <paper-toast id="toast-success" text="Project created!"></paper-toast>
+
+      <!-- Toast for successful deletion of project -->
+      <paper-toast id="toast-success-deletion" text="Project deleted!"></paper-toast>
       
       <!-- Toast for creation fail because of project with same name already existing -->
       <custom-style><style is="custom-style">
@@ -750,26 +787,65 @@ export class ProjectList extends LitElement {
           console.log(error);
         }
       });
-
-
     }
 
   /**
-   * Gets called when the "Group" icon of one of the displayed projects gets clicked and opens a dialog with
-   * information on the group which is currently connected to the project.
+   * Gets called when the "options" icon of one of the displayed projects gets clicked and opens a dialog with
+   * information on the group which is currently connected to the project and the possibility to delete the project.
    * @param project
    */
-  openConnectedGroupDialog(project) {
+  openProjectOptionsDialog(project) {
+    this.projectOptionsSelected = project;
+
     // reset the dialog
     this.shadowRoot.getElementById("connected-group-name").style.removeProperty("display");
     this.shadowRoot.getElementById("input-edit-group-name").style.setProperty("display", "none");
 
-    // TODO: show correct project name and group name
     this.shadowRoot.getElementById("connected-group-project-name").innerText = project.name;
     this.shadowRoot.getElementById("connected-group-name").innerText = project.groupName;
 
     // open the dialog
-    this.shadowRoot.getElementById("dialog-connected-group").open();
+    this.shadowRoot.getElementById("dialog-project-options").open();
+  }
+
+  /**
+   * Gets called when the "delete project" button in the project option dialog is clicked.
+   * Opens another dialog to verify whether the project should really be deleted.
+   */
+  showDeleteProjectDialog() {
+    // hide project options dialog
+    this.shadowRoot.getElementById("dialog-project-options").close();
+
+    // open delete dialog
+    this.shadowRoot.getElementById("dialog-delete-project").open();
+  }
+
+  /**
+   * Gets called if the user has verified that the project should be deleted.
+   */
+  _deleteProject() {
+    let projectToDelete = this.projectOptionsSelected;
+    fetch(this.projectServiceURL + "/projects/" + projectToDelete.name, {
+      method: "DELETE",
+      headers: Auth.getAuthHeaderWithSub(),
+      body: JSON.stringify({
+        "access_token": Auth.getAccessToken()
+      })
+    }).then(response => {
+      if(response.ok) {
+        this.shadowRoot.getElementById("toast-success-deletion").show();
+
+        // since a project got deleted, reload projects from server
+        this.showProjects(false);
+        // switch to tab "My Projects"
+        this.tabSelected = 0;
+        this.shadowRoot.getElementById("my-and-all-projects").selected = 0;
+      }
+      else throw Error(response.status);
+    }).catch(error => {
+      
+    });
+
   }
 
   /**
