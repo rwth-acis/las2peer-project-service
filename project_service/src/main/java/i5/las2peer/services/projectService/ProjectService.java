@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.ManualDeployment;
+import i5.las2peer.api.ServiceException;
 import i5.las2peer.api.security.Agent;
 import i5.las2peer.api.security.AgentNotFoundException;
 import i5.las2peer.api.security.AgentAccessDeniedException;
@@ -80,6 +81,15 @@ public class ProjectService extends RESTService {
 		setFieldValues(); // This sets the values of the configuration file
 		System.out.println(serviceGroupId);
 		this.eventManager = new EventManager(this.eventListenerService);
+	}
+	
+	/**
+	 * Check if serviceGroupId is set. Otherwise do not let service start.
+	 */
+	@Override
+	public void onStart() throws ServiceException {
+		if(this.serviceGroupId == null || this.serviceGroupId.isEmpty()) 
+			throw new ServiceException("Property serviceGroupId is not set!");
 	}
 
 	public GroupAgent getServiceGroupAgent() {
@@ -511,86 +521,80 @@ public class ProjectService extends RESTService {
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
-		} else {
-			Agent agent = Context.getCurrent().getMainAgent();
-			try {
-				JSONObject jsonBody = (JSONObject) JSONValue.parseWithException(body);
-				String projectName = (String) jsonBody.get("projectName");
-				String oldMetadata = jsonBody.get("oldMetadata").toString();
-				String newMetadata = jsonBody.get("newMetadata").toString();
-				String identifier = projects_prefix;
-				String newGroupName = "ss";
-				// check if user currently has access to project
-				if (!this.hasAccessToProject(projectName)) {
-					return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
-							.entity("User is no member of the project and thus not allowed to edit its linked group.")
-							.build();
-				}
-
-				try {
-					Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
-					ProjectContainer cc = (ProjectContainer) stored.getContent();
-					// read all projects from the project list
-					List<Project> projects = cc.getAllProjects();
-
-					for (Project project : projects) {
-						// To check whether there is an inconsistency, we compare the old metadata given
-						// as a parameter;
-						// Search correct project
-						if (projectName.equals(project.getName())) {
-							// check if new group actually differs from old group
-							if (oldMetadata.equals(project.getMetadataString())) {
-								try {
-									GroupAgent ga = (GroupAgent) Context.get()
-											.requestAgent(project.getGroupIdentifier(), agent);
-									// user is allowed to access group agent => user is a project/group member
-									cc.removeProject(project);
-									project.changeMetadata(newMetadata);
-									cc.addProject(project);
-									stored.setContent(cc);
-									Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
-									JSONObject response = new JSONObject();
-									response.put("project", project);
-									return Response.status(Status.OK).entity("Metadata successfully changed!")
-											.entity(response).build();
-								} catch (AgentAccessDeniedException e) {
-									// user is not allowed to access group agent => user is no project/group member
-									// cant use group which user is not a part of
-									return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
-											.entity("You are not a part of this group!").build();
-
-								} catch (AgentNotFoundException e) {
-									// or: group does not exist
-									return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
-											.entity("Non-existing group").build();
-								} catch (AgentOperationFailedException e) {
-									return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity(e).build();
-								}
-							} else {
-								return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
-										.entity("Inconsistency with old metadata, please reload page and try again!")
-										.build();
-							}
-						}
-					}
-
-					// create another list for storing the projects that should be returned as JSON
-					// objects
-					List<JSONObject> projectsJSON = new ArrayList<>();
-				} catch (EnvelopeNotFoundException e) {
-
-					return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("No projects available.").build();
-				} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
-					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
-				}
-			} catch (ParseException e) {
-				// JSON project given with the request is not well formatted or some attributes
-				// are missing
-				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
+		};
+		Agent agent = Context.getCurrent().getMainAgent();
+		try {
+			JSONObject jsonBody = (JSONObject) JSONValue.parseWithException(body);
+			String projectName = (String) jsonBody.get("projectName");
+			String oldMetadata = jsonBody.get("oldMetadata").toString();
+			String newMetadata = jsonBody.get("newMetadata").toString();
+			String identifier = projects_prefix;
+			String newGroupName = "ss";
+			// check if user currently has access to project
+			if (!this.hasAccessToProject(projectName)) {
+				return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
+						.entity("User is no member of the project and thus not allowed to edit its linked group.")
+						.build();
 			}
 
-			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
+			try {
+				Envelope stored = Context.get().requestEnvelope(identifier, Context.get().getServiceAgent());
+				ProjectContainer cc = (ProjectContainer) stored.getContent();
+				// read all projects from the project list
+				List<Project> projects = cc.getAllProjects();
+
+				for (Project project : projects) {
+					// To check whether there is an inconsistency, we compare the old metadata given
+					// as a parameter;
+					// Search correct project
+					if (projectName.equals(project.getName())) {
+						// check if new group actually differs from old group
+						if (oldMetadata.equals(project.getMetadataString())) {
+							try {
+								GroupAgent ga = (GroupAgent) Context.get().requestAgent(project.getGroupIdentifier(),
+										agent);
+								// user is allowed to access group agent => user is a project/group member
+								cc.removeProject(project);
+								project.changeMetadata(newMetadata);
+								cc.addProject(project);
+								stored.setContent(cc);
+								Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+								JSONObject response = new JSONObject();
+								response.put("project", project);
+								return Response.status(Status.OK).entity("Metadata successfully changed!")
+										.entity(response).build();
+							} catch (AgentAccessDeniedException e) {
+								// user is not allowed to access group agent => user is no project/group member
+								// cant use group which user is not a part of
+								return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+										.entity("You are not a part of this group!").build();
+
+							} catch (AgentNotFoundException e) {
+								// or: group does not exist
+								return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("Non-existing group")
+										.build();
+							} catch (AgentOperationFailedException e) {
+								return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity(e).build();
+							}
+						} else {
+							return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+									.entity("Inconsistency with old metadata, please reload page and try again!")
+									.build();
+						}
+					}
+				}
+			} catch (EnvelopeNotFoundException e) {
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("No projects available.").build();
+			} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+		} catch (ParseException e) {
+			// JSON project given with the request is not well formatted or some attributes
+			// are missing
+			return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 		}
+
+		return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 	}
 	
 	/**

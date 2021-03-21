@@ -224,6 +224,15 @@ public class ServiceTest {
 			result = client.sendRequest("POST", mainPath,
 					this.getProjectJSON("Project1_testPostProject", "groupName", this.identifierGroupA));
 			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			
+			// test again with same project name (should not be allowed, because project with that name already exists)
+			result = client.sendRequest("POST", mainPath,
+					this.getProjectJSON("Project1_testPostProject", "groupName", this.identifierGroupA));
+			Assert.assertEquals(HttpURLConnection.HTTP_CONFLICT, result.getHttpCode());
+			
+			// test again with incorrect project json (only containing project name, other attributes missing)
+			result = client.sendRequest("POST", mainPath, "{\"projectName\": \"should-fail\"}");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
 
 			// check if RMITestService event _onProjectCreated got called
 			result = client.sendRequest("GET", "rmitestservice/onProjectCreated", "");
@@ -304,6 +313,10 @@ public class ServiceTest {
 			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
 			result = client.sendRequest("POST", mainPath + "changeGroup", o.toJSONString());
 			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			
+			// now test with no valid json
+			result = client.sendRequest("POST", mainPath + "changeGroup", "{fail");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
 		} catch (Exception e) {
 			e.printStackTrace();
 			Assert.fail(e.toString());

@@ -43,13 +43,6 @@ public class Project implements Serializable {
 	 */
 	private String metadata;
 
-	public Project(String name, String groupName, String groupIdentifier, String metadata) {
-		this.name = name;
-		this.groupName = groupName;
-		this.groupIdentifier = groupIdentifier;
-		this.metadata = metadata;
-	}
-
 	/**
 	 * Creates a project object from the given JSON string. This constructor should
 	 * be used before storing new projects.
@@ -90,7 +83,7 @@ public class Project implements Serializable {
 			this.metadata = empty.toJSONString();
 		}
 
-		if (project.containsKey("users")) {
+		/*if (project.containsKey("users")) {
 			for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
 				String userName = ((JSONArray) project.get("users")).get(i).toString();
 				try {
@@ -100,13 +93,12 @@ public class Project implements Serializable {
 				} catch (Exception q) {
 					System.out.println(q + "User does not exist?");
 				}
-				/*
-				 * if(user != true) {
-				 * 
-				 * }
-				 */
+				
+				if(user != true) {
+				 
+				}	
 			}
-		}
+		}*/
 	}
 
 	/**
