@@ -69,7 +69,6 @@ public class ProjectService extends RESTService {
 	private static final String visibilityOfProjectsDefault = "own";
 
 	// service that should be called on specific events such as project creation
-	private String eventListenerService;
 	private EventManager eventManager;
 
 	private String serviceGroupId;

@@ -105,7 +105,7 @@ export class DemoElement extends LitElement {
     ></las2peer-frontend-statusbar>
       <h2>Project list with "All Projects" enabled</h2>
       <div style="display: flex">
-        <project-list id="pl1" @projects-loaded=${this._onProjectsLoaded} @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
+        <project-list system="test" id="pl1" @projects-loaded=${this._onProjectsLoaded} @project-selected=${this._onProjectSelected} style="flex: 2"></project-list>
         <div style="flex: 1; margin-left: 1em">
           <h1>Demo information:</h1>
           <h3>Selected project:</h3>
@@ -116,7 +116,7 @@ export class DemoElement extends LitElement {
       </div>
       
       <h2>Project list with "All Projects" disabled</h2>
-    <!--  <project-list disableAllProjects="true"></project-list> -->
+    <!--  <project-list system="test" disableAllProjects="true"></project-list> -->
     `;
   }
 
