@@ -41,7 +41,8 @@ public class ServiceTest {
 	private static UserAgentImpl testAgentEve;
 	private static final String testPassEve = "evespass";
 
-	private static final String mainPath = "projects/";
+	public static final String system = "test";
+	private static final String mainPath = "projects/" + system + "/";
 
 	private String identifierGroupA;
 	private static final String nameGroupA = "groupA";
@@ -50,7 +51,7 @@ public class ServiceTest {
 	
 	// the used .properties file can be found in project_service/properties folder
 	private static final String projectServicePropertiesPath = "properties/i5.las2peer.services.projectService.ProjectService.properties";
-
+	
 	/**
 	 * Called before a test starts.
 	 * 

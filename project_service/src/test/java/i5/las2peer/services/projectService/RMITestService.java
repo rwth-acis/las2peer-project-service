@@ -62,7 +62,8 @@ public class RMITestService extends RESTService {
 		boolean access;
 		String serviceMethod = "hasAccessToProject";
 		try {
-			access = (boolean) Context.getCurrent().invoke("i5.las2peer.services.projectService.ProjectService@1.0.0", serviceMethod, projectName);
+			access = (boolean) Context.getCurrent().invoke("i5.las2peer.services.projectService.ProjectService@1.0.0", 
+					serviceMethod, ServiceTest.system, projectName);
 		} catch (ServiceNotFoundException | ServiceNotAvailableException e) {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Service not found or not available.").build();
 		} catch (ServiceMethodNotFoundException e) {

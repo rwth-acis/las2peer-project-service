@@ -2,6 +2,7 @@ package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.ws.rs.GET;
@@ -61,7 +62,11 @@ import i5.las2peer.services.projectService.project.Project;
 public class ProjectService extends RESTService {
 	public final static String projects_prefix = "projects";
 
-	private String visibilityOfProjects;
+	/**
+	 * If a system does not specify the "visibilityOfProjects" attribute, then this 
+	 * default value is used.
+	 */
+	private static final String visibilityOfProjectsDefault = "own";
 
 	// service that should be called on specific events such as project creation
 	private String eventListenerService;
@@ -70,26 +75,35 @@ public class ProjectService extends RESTService {
 	private String serviceGroupId;
 	private String oldServiceAgentId;
 	private String oldServiceAgentPw;
+	
+	private String systems;
+	private JSONObject systemsJSON;
 
 	@Override
 	protected void initResources() {
 		getResourceConfig().register(this);
 	}
 
-	public ProjectService() {
+	public ProjectService() throws ServiceException {
 		super();
 		setFieldValues(); // This sets the values of the configuration file
 		System.out.println(serviceGroupId);
-		this.eventManager = new EventManager(this.eventListenerService);
-	}
-	
-	/**
-	 * Check if serviceGroupId is set. Otherwise do not let service start.
-	 */
-	@Override
-	public void onStart() throws ServiceException {
+		
+		// check if serviceGroupId is set. Otherwise do not let service start.
 		if(this.serviceGroupId == null || this.serviceGroupId.isEmpty()) 
-			throw new ServiceException("Property serviceGroupId is not set!");
+			throw new ServiceException("Property 'serviceGroupId' is not set!");
+		
+		// check if systems property is set. Otherwise service should not start.
+		if(this.systems == null || this.systems.isEmpty())
+			throw new ServiceException("Property 'systems' is not set!");
+		
+		try {
+			systemsJSON = (JSONObject) JSONValue.parseWithException(this.systems);
+		} catch (ParseException e) {
+			throw new ServiceException("Property 'systems' is not well-formatted!");
+		}
+		
+		this.eventManager = new EventManager(this.getSystemEventListenerServiceMap());
 	}
 
 	public GroupAgent getServiceGroupAgent() {
@@ -122,12 +136,14 @@ public class ProjectService extends RESTService {
 	 * This method can be used by other services, to verify if a user is allowed to
 	 * write-access a project.
 	 * 
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
 	 * @param projectName Project where the permission should be checked for.
 	 * @return True, if agent has access to project. False otherwise (or if project
 	 *         with given name does not exist).
 	 */
-	public boolean hasAccessToProject(String projectName) {
-		String identifier = getProjectIdentifier(projectName);
+	public boolean hasAccessToProject(String system, String projectName) {
+		String identifier = getProjectIdentifier(system, projectName);
 		try {
 			Context.getCurrent().requestEnvelope(identifier);
 		} catch (EnvelopeAccessDeniedException e) {
@@ -143,6 +159,8 @@ public class ProjectService extends RESTService {
 	 * authorized. First, checks if a project with the given name already exists. If
 	 * not, then the new project gets stored into the pastry storage.
 	 * 
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
 	 * @param inputProject JSON representation of the project to store (containing
 	 *                     name and access token of user needed to create
 	 *                     Requirements Bazaar category).
@@ -150,7 +168,7 @@ public class ProjectService extends RESTService {
 	 *         project).
 	 */
 	@POST
-	@Path("/")
+	@Path("/{system}/")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@ApiOperation(value = "Creates a new project in the pastry storage if no project with the same name is already existing.")
 	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, project created."),
@@ -158,8 +176,11 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_CONFLICT, message = "There already exists a project with the given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
-	public Response postProject(String inputProject) {
+	public Response postProject(@PathParam("system") String system, String inputProject) {
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "postProject: trying to store a new project");
+		
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
@@ -183,8 +204,8 @@ public class ProjectService extends RESTService {
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 			}
 
-			String identifier = getProjectIdentifier(project.getName());
-			String identifier2 = projects_prefix;
+			String identifier = getProjectIdentifier(system, project.getName());
+			String identifier2 = getProjectListIdentifier(system);
 
 			try {
 				Context.get().requestEnvelope(identifier);
@@ -258,7 +279,7 @@ public class ProjectService extends RESTService {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
 
-			if (this.eventManager.sendProjectCreatedEvent(Context.get(), project.toJSONObject())) {
+			if (this.eventManager.sendProjectCreatedEvent(Context.get(), system, project.toJSONObject())) {
 				return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 			} else {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
@@ -270,17 +291,21 @@ public class ProjectService extends RESTService {
 	/**
 	 * Gets a user's projects Therefore, the user needs to be authorized.
 	 * 
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
 	 * @return Response containing the status code
 	 */
 	@GET
-	@Path("/")
+	@Path("/{system}/")
 	@Produces(MediaType.APPLICATION_JSON)
 	@ApiOperation(value = "Creates a new project in the database if no project with the same name is already existing.")
 	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_CREATED, message = "OK, projects fetched."),
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
-	public Response getProjects() {
-		System.out.println("sasas" + visibilityOfProjects);
+	public Response getProjects(@PathParam("system") String system) {
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
 		Agent agent = Context.getCurrent().getMainAgent();
 		if (agent instanceof AnonymousAgent) {
 			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
@@ -291,7 +316,7 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
 					.build();
 
-		String identifier = projects_prefix;
+		String identifier = getProjectListIdentifier(system);
 		JSONObject result = new JSONObject();
 		try {
 			Envelope stored = Context.get().requestEnvelope(identifier, serviceGroupAgent);
@@ -317,7 +342,7 @@ public class ProjectService extends RESTService {
 					// user is not allowed to access group agent => user is no project/group member
 					// only return this project if the service is configured that all projects are
 					// readable by any user
-					if (visibilityOfProjects.equals("all")) {
+					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
 						projectJSON.put("is_member", false);
 						projectsJSON.add(projectJSON);
 					}
@@ -341,16 +366,22 @@ public class ProjectService extends RESTService {
 	
 	/**
 	 * Deleted the project with the given name.
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
+	 * @param projectName Name of the project that should be deleted.
 	 * @return Response containing the status code
 	 */
 	@DELETE
-	@Path("/{projectName}")
+	@Path("/{system}/{projectName}")
 	@ApiOperation(value = "Deletes a project from storage.")
 	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK, project deleted."),
 			@ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "Agent is no project member and not allowed to delete it."),
 			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find a project with the given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
-	public Response deleteProject(@PathParam("projectName") String projectName) {		
+	public Response deleteProject(@PathParam("system") String system, @PathParam("projectName") String projectName) {
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
 		Agent agent = Context.getCurrent().getMainAgent();
 		
 		GroupAgent serviceGroupAgent = getServiceGroupAgent();
@@ -358,7 +389,7 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
 					.build();
 		
-		String projectIdentifier = getProjectIdentifier(projectName);
+		String projectIdentifier = getProjectIdentifier(system, projectName);
 		Project deletedProject;
 		try {
 			// remove project from "project envelope"
@@ -370,7 +401,7 @@ public class ProjectService extends RESTService {
 			Context.get().storeEnvelope(env, agent);
 			
 			// also update project list and remove the project there
-			Envelope envList = Context.get().requestEnvelope(projects_prefix, serviceGroupAgent);
+			Envelope envList = Context.get().requestEnvelope(getProjectListIdentifier(system), serviceGroupAgent);
 			ProjectContainer ccList = (ProjectContainer) envList.getContent();
 			ccList.removeProject(projectName);
 			envList.setContent(ccList);
@@ -385,7 +416,7 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 		}
 		
-		if (this.eventManager.sendProjectDeletedEvent(Context.get(), deletedProject.toJSONObject())) {
+		if (this.eventManager.sendProjectDeletedEvent(Context.get(), system, deletedProject.toJSONObject())) {
 			return Response.status(HttpURLConnection.HTTP_OK).build();
 		} else {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
@@ -397,6 +428,8 @@ public class ProjectService extends RESTService {
 	 * Changes the group linked to an existing project in the pastry storage.
 	 * Therefore, the user needs to be authorized.
 	 * 
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
 	 * @param body JSON representation of the project to store (containing name and
 	 *             access token of user needed to create Requirements Bazaar
 	 *             category).
@@ -404,7 +437,7 @@ public class ProjectService extends RESTService {
 	 *         project).
 	 */
 	@POST
-	@Path("/changeGroup")
+	@Path("/{system}/changeGroup")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.APPLICATION_JSON)
 	@ApiOperation(value = "Creates a new project in the pastry storage if no project with the same name is already existing.")
@@ -413,7 +446,10 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_CONFLICT, message = "The given group is already linked to the project."),
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
-	public Response changeGroup(String body) {
+	public Response changeGroup(@PathParam("system") String system, String body) {
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
@@ -426,10 +462,10 @@ public class ProjectService extends RESTService {
 				String projectName = (String) jsonBody.get("projectName");
 				String newGroupId = (String) jsonBody.get("newGroupId");
 				String newGroupName = (String) jsonBody.get("newGroupName");
-				String identifier = projects_prefix;
+				String identifier = getProjectListIdentifier(system);
 
 				// check if user currently has access to project
-				if (!this.hasAccessToProject(projectName)) {
+				if (!this.hasAccessToProject(system, projectName)) {
 					return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
 							.entity("User is no member of the project and thus not allowed to edit its linked group.")
 							.build();
@@ -501,6 +537,8 @@ public class ProjectService extends RESTService {
 	 * Changes the group linked to an existing project in the pastry storage.
 	 * Therefore, the user needs to be authorized.
 	 * 
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
 	 * @param body JSON representation of the project to store (containing name and
 	 *             access token of user needed to create Requirements Bazaar
 	 *             category).
@@ -508,7 +546,7 @@ public class ProjectService extends RESTService {
 	 *         project).
 	 */
 	@POST
-	@Path("/changeMetadata")
+	@Path("/{system}/changeMetadata")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.APPLICATION_JSON)
 	@ApiOperation(value = "Change metadata corresponding to project.")
@@ -516,7 +554,10 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
-	public Response changeMetadata(String body) {
+	public Response changeMetadata(@PathParam("system") String system, String body) {
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
@@ -528,10 +569,9 @@ public class ProjectService extends RESTService {
 			String projectName = (String) jsonBody.get("projectName");
 			String oldMetadata = jsonBody.get("oldMetadata").toString();
 			String newMetadata = jsonBody.get("newMetadata").toString();
-			String identifier = projects_prefix;
-			String newGroupName = "ss";
+			String identifier = getProjectListIdentifier(system);
 			// check if user currently has access to project
-			if (!this.hasAccessToProject(projectName)) {
+			if (!this.hasAccessToProject(system, projectName)) {
 				return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
 						.entity("User is no member of the project and thus not allowed to edit its linked group.")
 						.build();
@@ -599,10 +639,56 @@ public class ProjectService extends RESTService {
 	
 	/**
 	 * Returns the identifier of the envelope for the project with the given name.
+	 * @param system Prefix of the system which is used for all envelopes. Should be unique
+	 *        for every system using the project service.
 	 * @param projectName Name of the project
 	 * @return The identifier of the envelope for the project with the given name.
 	 */
-	public static String getProjectIdentifier(String projectName) {
-	    return projects_prefix + "_" + projectName;
+	public static String getProjectIdentifier(String system, String projectName) {
+	    return system + "_" + projects_prefix + "_" + projectName;
+	}
+	
+	/**
+	 * Returns the identifier of the envelope for the project list of the given system.
+	 * @param system Prefix of the system which is used for all envelopes. Should be unique
+	 *        for every system using the project service.
+	 * @return The identifier of the envelope for the project with the given name.
+	 */
+	private static String getProjectListIdentifier(String system) {
+		return system + "_" + projects_prefix;
+	}
+	
+	/**
+	 * Checks if the given system name is valid, i.e. if it is part of the systems JSON given as a system property.
+	 * @param system Name of the system.
+	 * @return Whether the given system name is valid.
+	 */
+	private boolean isValidSystemName(String system) {
+		return this.systemsJSON.containsKey(system);
+	}
+	
+	/**
+	 * Returns the value of the "visibilityOfProjects" attribute of the given system.
+	 * @param system Name of the system.
+	 * @return Value of "visibilityOfProjects" attribute set for this system.
+	 */
+	private String getVisibilityOfProjectsBySystem(String system) {
+		JSONObject systemJSON = (JSONObject) this.systemsJSON.get(system);
+		String visibility = (String) systemJSON.getOrDefault("visibilityOfProjects", visibilityOfProjectsDefault);
+		return visibility;
+	}
+	
+	/**
+	 * Returns a map consisting for every system (key) the corresponding event listener service name (as value).
+	 * If the event listener service was not set in the properties file, then it is null.
+	 * @return
+	 */
+	private HashMap<String, String> getSystemEventListenerServiceMap() {
+		HashMap<String, String> map = new HashMap<>();
+		for(Object system : this.systemsJSON.keySet()) {
+			String eventListenerService = (String)((JSONObject) systemsJSON.get(system)).getOrDefault("eventListenerService", null);
+			map.put((String) system, eventListenerService);
+		}
+		return map;
 	}
 }

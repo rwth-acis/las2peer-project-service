@@ -1,6 +1,7 @@
 package i5.las2peer.services.projectService;
 
 import java.io.Serializable;
+import java.util.HashMap;
 
 import org.json.simple.JSONObject;
 
@@ -14,7 +15,7 @@ import i5.las2peer.api.execution.ServiceNotAvailableException;
 import i5.las2peer.api.execution.ServiceNotFoundException;
 
 /**
- * Helper class used to send messages to the configured event listener service on specific events.
+ * Helper class used to send messages to the configured event listener services on specific events.
  * @author Philipp
  *
  */
@@ -24,57 +25,54 @@ public class EventManager {
 	private static final String EVENT_METHOD_PROJECT_DELETED = "_onProjectDeleted";
 	
 	/**
-	 * Name of the service that should be called on specific events.
-	 * Might be null if not set.
+	 * Map containing the name of the event listener service for every system.
+	 * Name of the service is the one that should be called on specific events.
+	 * Might be null for some systems if not set.
 	 */
-	private String eventListenerService;
+	private HashMap<String, String> eventListenerServiceMap;
 	
-	/**
-	 * Whether the event listener is enabled.
-	 * This depends on whether eventListenerService is null.
-	 */
-	private boolean eventListenerEnabled = false;
-	
-	public EventManager(String eventListenerService) {
-		this.eventListenerService = eventListenerService;
-		
-		if(this.eventListenerService != null && !this.eventListenerService.isEmpty()) {
-			this.eventListenerEnabled = true;
-		}
+	public EventManager(HashMap<String, String> eventListenerServiceMap) {
+		this.eventListenerServiceMap = eventListenerServiceMap;
 	}
 	
 	/**
 	 * Sends the project-created event for the given project to the event listener service.
 	 * @param context Context used for invoking the event listener service.
+	 * @param system System that the project belongs to.
 	 * @param projectJSON Project that got created as a JSONObject.
 	 * @return If event listener is disabled, then always true. Otherwise only true, if event was sent successfully.
 	 */
-	public boolean sendProjectCreatedEvent(Context context, JSONObject projectJSON) {
-		return invokeEventListenerService(context, EVENT_METHOD_PROJECT_CREATED, projectJSON);
+	public boolean sendProjectCreatedEvent(Context context, String system, JSONObject projectJSON) {
+		return invokeEventListenerService(context, system, EVENT_METHOD_PROJECT_CREATED, projectJSON);
 	}
 	
 	/**
 	 * Sends the project-deleted event for the given project to the event listener service.
 	 * @param context Context used for invoking the event listener service.
+	 * @param system System that the project belongs to.
 	 * @param projectJSON Project that got deleted as a JSONObject.
 	 * @return If event listener is disabled, then always true. Otherwise only true, if event was sent successfully.
 	 */
-	public boolean sendProjectDeletedEvent(Context context, JSONObject projectJSON) {
-		return invokeEventListenerService(context, EVENT_METHOD_PROJECT_DELETED, projectJSON);
+	public boolean sendProjectDeletedEvent(Context context, String system, JSONObject projectJSON) {
+		return invokeEventListenerService(context, system, EVENT_METHOD_PROJECT_DELETED, projectJSON);
 	}
 	
 	/**
 	 * Helper method which uses the given context to invoke the given method of the event listener service (configured
 	 * in properties file of service) using the given data.
 	 * @param context Context used for invoking the event listener service.
+	 * @param system System is required to find correct event listener service.
 	 * @param method Method that should be called in the event listener service.
 	 * @param data Data that should be used as parameters in the method call.
 	 * @return If event listener is disabled, then always true. Otherwise only true, if method was called successfully.
 	 */
-	private boolean invokeEventListenerService(Context context, String method, Serializable... data) {
-		if(!this.eventListenerEnabled) return true;
+	private boolean invokeEventListenerService(Context context, String system, String method, Serializable... data) {
+		String eventListenerService = this.eventListenerServiceMap.get(system);
+		boolean enabled = eventListenerService != null;
+		if(!enabled) return true;
+		
 		try {
-			context.invoke(this.eventListenerService, method, data);
+			context.invoke(eventListenerService, method, data);
 			return true;
 		} catch (ServiceNotFoundException | ServiceNotAvailableException | InternalServiceException
 				| ServiceMethodNotFoundException | ServiceInvocationFailedException | ServiceAccessDeniedException
