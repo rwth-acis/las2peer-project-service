@@ -15,9 +15,33 @@ export SERVICE_NAME=$(awk -F "=" '/service.name/ {print $2}' gradle.properties)
 export SERVICE_CLASS=$(awk -F "=" '/service.class/ {print $2}' gradle.properties)
 export SERVICE=${SERVICE_NAME}.${SERVICE_CLASS}@${SERVICE_VERSION}
 
-# set defaults for optional service parameters
-[[ -z "${VISIBILITY_OF_PROJECTS}" ]] && export VISIBILITY_OF_PROJECTS='own'
-[[ -z "${EVENT_LISTENER_SERVICE}" ]] && export EVENT_LISTENER_SERVICE=''
+function set_in_service_config {
+    sed -i "s?${1}[[:blank:]]*=.*?${1}=${2}?g" ${SERVICE_PROPERTY_FILE}
+}
+
+# check mandatory variables
+[[ -z "${SYSTEMS}" ]] && \
+    echo "Mandatory variable SYSTEMS is not set. Add -e SYSTEMS={...} to your arguments." && exit 1
+
+# check if a new group agent should be generated for the service
+if [[ -z "${NEW_GROUP_AGENT}" ]]; then
+  # NEW_GROUP_AGENT is undefined
+  echo "Environment variable NEW_GROUP_AGENT is not set. TODO"
+else
+  # NEW_GROUP_AGENT is set
+  # TODO: Check if there does not exist a group agent yet
+
+  echo "Generating a new service agent..."
+  sh bin/start_ServiceAgentGenerator.sh "i5.las2peer.services.projectService.ProjectService@1.0.0" ${SERVICE_PASSPHRASE} > "etc/startup/i5.las2peer.services.projectService.ProjectService@1.0.0.xml"
+  echo -e "\ni5.las2peer.services.projectService.ProjectService@1.0.0.xml;${SERVICE_PASSPHRASE}" >> "etc/startup/passphrases.txt"
+  echo "Generating a new group agent for the service..."
+  sh bin/start_GroupAgentGenerator.sh "etc/startup/i5.las2peer.services.projectService.ProjectService@1.0.0.xml" > "etc/startup/group.xml"
+  # extract id of group agent from group.xml file
+  groupId=`sed -n "s:.*<id>\(.*\)</id>.*:\1:p" "etc/startup/group.xml"`
+  echo "Group agent was generated. Group agent identifier is: $groupId"
+  echo "Using this group id as the service group id."
+  set_in_service_config serviceGroupId $groupId
+fi
 
 # set defaults for optional web connector parameters
 [[ -z "${START_HTTP}" ]] && export START_HTTP='TRUE'
@@ -30,10 +54,6 @@ export SERVICE=${SERVICE_NAME}.${SERVICE_CLASS}@${SERVICE_VERSION}
 [[ -z "${OIDC_PROVIDERS}" ]] && export OIDC_PROVIDERS='https://api.learning-layers.eu/o/oauth2,https://accounts.google.com'
 
 # configure service properties
-
-function set_in_service_config {
-    sed -i "s?${1}[[:blank:]]*=.*?${1}=${2}?g" ${SERVICE_PROPERTY_FILE}
-}
 
 set_in_service_config visibilityOfProjects ${VISIBILITY_OF_PROJECTS}
 set_in_service_config eventListenerService ${EVENT_LISTENER_SERVICE}
