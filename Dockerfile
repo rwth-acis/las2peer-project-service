@@ -14,7 +14,7 @@ WORKDIR /src
 RUN chmod +x /src/docker-entrypoint.sh
 # run the rest as unprivileged user
 USER las2peer
-RUN chmod +x gradlew && ./gradlew build
+RUN chmod +x gradlew && ./gradlew build --exclude-task test javadoc
 
 EXPOSE $HTTP_PORT
 EXPOSE $HTTPS_PORT
