@@ -205,7 +205,7 @@ export class ProjectList extends LitElement {
     // use a default value for project service URL for local testing
     this.projectServiceURL = "http://127.0.0.1:8080";
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
-    window.addEventListener('metadata-changed', this._changeMetadata);
+    window.addEventListener('metadata-changed', this._changeMetadata.bind(this));
     this.disableAllProjects = false;
     this.yjsAddress = "http://127.0.0.1:1234";
     this.yjsResourcePath = "./socket.io";
