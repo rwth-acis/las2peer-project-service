@@ -26,21 +26,38 @@ function set_in_service_config {
 # check if a new group agent should be generated for the service
 if [[ -z "${NEW_GROUP_AGENT}" ]]; then
   # NEW_GROUP_AGENT is undefined
-  echo "Environment variable NEW_GROUP_AGENT is not set. TODO"
+  # we want to add the service agent to an existing group
+  [[ -z "${OLD_SERVICE_AGENT_ID}" ]] && \
+    echo "Variable NEW_GROUP_AGENT is not set, but OLD_SERVICE_AGENT_ID is not set too. Cannot start service." && exit 1
+
+  [[ -z "${OLD_SERVICE_AGENT_PW}" ]] && \
+    echo "Variable NEW_GROUP_AGENT is not set, but OLD_SERVICE_AGENT_PW is not set too. Cannot start service." && exit 1
+
+  [[ -z "${SERVICE_GROUP_ID}" ]] && \
+    echo "Variable NEW_GROUP_AGENT is not set, but SERVICE_GROUP_ID is not set too. Cannot start service. Either set NEW_GROUP_AGENT or set SERVICE_GROUP_ID to the id of the previously used service group." && exit 1
+
+  set_in_service_config oldServiceAgentId ${OLD_SERVICE_AGENT_ID}
+  set_in_service_config oldServiceAgentPw ${OLD_SERVICE_AGENT_PW}
+  set_in_service_config serviceGroupId ${SERVICE_GROUP_ID}
 else
   # NEW_GROUP_AGENT is set
-  # TODO: Check if there does not exist a group agent yet
-
-  echo "Generating a new service agent..."
-  sh bin/start_ServiceAgentGenerator.sh "i5.las2peer.services.projectService.ProjectService@1.0.0" ${SERVICE_PASSPHRASE} > "etc/startup/i5.las2peer.services.projectService.ProjectService@1.0.0.xml"
-  echo -e "\ni5.las2peer.services.projectService.ProjectService@1.0.0.xml;${SERVICE_PASSPHRASE}" >> "etc/startup/passphrases.txt"
-  echo "Generating a new group agent for the service..."
-  sh bin/start_GroupAgentGenerator.sh "etc/startup/i5.las2peer.services.projectService.ProjectService@1.0.0.xml" > "etc/startup/group.xml"
-  # extract id of group agent from group.xml file
-  groupId=`sed -n "s:.*<id>\(.*\)</id>.*:\1:p" "etc/startup/group.xml"`
-  echo "Group agent was generated. Group agent identifier is: $groupId"
-  echo "Using this group id as the service group id."
-  set_in_service_config serviceGroupId $groupId
+  # Check if there does not exist a group agent yet
+  if [[ -f "etc/startup/group.xml" ]]; then
+    # group.xml exists
+    # do not do anything, we use the existing service and group agents
+    echo "There already exists a group.xml file. We use the existing service and group agent."
+  else 
+    echo "Generating a new service agent..."
+    sh bin/start_ServiceAgentGenerator.sh ${SERVICE} ${SERVICE_PASSPHRASE} > "etc/startup/${SERVICE}.xml"
+    echo -e "\n${SERVICE}.xml;${SERVICE_PASSPHRASE}" >> "etc/startup/passphrases.txt"
+    echo "Generating a new group agent for the service..."
+    sh bin/start_GroupAgentGenerator.sh "etc/startup/${SERVICE}.xml" > "etc/startup/group.xml"
+    # extract id of group agent from group.xml file
+    groupId=`sed -n "s:.*<id>\(.*\)</id>.*:\1:p" "etc/startup/group.xml"`
+    echo "Group agent was generated. Group agent identifier is: $groupId"
+    echo "Using this group id as the service group id."
+    set_in_service_config serviceGroupId $groupId
+  fi
 fi
 
 # set defaults for optional web connector parameters
@@ -52,11 +69,6 @@ fi
 [[ -z "${CROSS_ORIGIN_RESOURCE_MAX_AGE}" ]] && export CROSS_ORIGIN_RESOURCE_MAX_AGE='60'
 [[ -z "${ENABLE_CROSS_ORIGIN_RESOURCE_SHARING}" ]] && export ENABLE_CROSS_ORIGIN_RESOURCE_SHARING='TRUE'
 [[ -z "${OIDC_PROVIDERS}" ]] && export OIDC_PROVIDERS='https://api.learning-layers.eu/o/oauth2,https://accounts.google.com'
-
-# configure service properties
-
-set_in_service_config visibilityOfProjects ${VISIBILITY_OF_PROJECTS}
-set_in_service_config eventListenerService ${EVENT_LISTENER_SERVICE}
 
 # configure web connector properties
 
@@ -98,7 +110,7 @@ fi
 # start the service within a las2peer node
 if [[ -z "${@}" ]]
 then
-  exec ${LAUNCH_COMMAND} startService\("'""${SERVICE}""'", "'""${SERVICE_PASSPHRASE}""'"\) startWebConnector
+  exec ${LAUNCH_COMMAND} uploadStartupDirectory startService\("'""${SERVICE}""'", "'""${SERVICE_PASSPHRASE}""'"\) startWebConnector
 else
   exec ${LAUNCH_COMMAND} ${@}
 fi

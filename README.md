@@ -14,12 +14,37 @@ gradle clean build
 
 Service Properties
 --------
+The project service uses a group agent to store envelopes containing the lists of available projects.
+This allows, to access these envelopes using different service agents.
+As an example, when updating your service, you do not loose access to the projects, but a new service agent can be added to the group agent instead (which will grant access to the envelopes).
 
-| Property (Docker env variable)                | Possible values | Default          | Description |
-|-----------------------------------------------|-----------------|------------------|-------------|
-| visibilityOfProjects (VISIBILITY_OF_PROJECTS) | all, own        | own              | Whether users are able to read-access all projects or only the ones they are a member of.|
-| eventListenerService (EVENT_LISTENER_SERVICE) | Service names   | -                | May be used to set a service as an event listener. This service will then be called on specified events, such as project creation. |
-| serviceGroupId | | - | Needs to be set to the identifier of a group agent where the service agent is a member of. This group will be used to store envelopes. |
+Depending on whether you are starting the service for the first time (and do not have a service group agent yet) or whether you are starting an updated version of the service, different properties (or environment variables) have to be set.
+
+When you are starting the service for the first time, you need to set the docker environment variable "NEW_GROUP_AGENT". Then on the first start of the service, a new group agent is generated for the service. In case you want to update your service at a later point and still want to have access to your projects, please note down the agent id of your service, the password for the service agent and also the id of the service group agent.
+You can find the id of the service group agent in the etc/startup/group.xml file.
+
+When you want to restart your service after an update, you need to remove the "NEW_GROUP_AGENT" environment variable.
+Instead, you now need to set the variables "SERVICE_GROUP_ID", "OLD_SERVICE_AGENT_ID" and "OLD_SERVICE_AGENT_PW" accordingly.
+When using the service, your new service agent will be automatically added to the existing group by using the old service agent and it's password.
+
+Besides that, you need to configure the systems that the project service should handle projects for.
+Therefore, you may use the "SYSTEMS" environment variable.
+It should be set to a JSON object which could look as follows, if you are using two systems:
+```
+{
+  "SBF": {
+    "visibilityOfProjects": "own"
+  },
+  "CAE": {
+    "visibilityOfProjects": "all",
+    "eventListenerService": "i5.las2peer.services.modelPersistenceService.ModelPersistenceService@0.1"
+  }
+}
+```
+In this example, we are supporting two systems, namely the "SBF" and "CAE".
+In the CAE it is possible to view all projects, even the ones where a user is no member of.
+The SBF only allows to read those projects, where the user is a member of.
+Besides that, the ModelPersistenceService is called in the CAE, if specific events (such as project-creation) occur. For more information, see the section on the event listener service.
 
 Event Listener Service
 --------
