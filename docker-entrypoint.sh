@@ -23,6 +23,8 @@ function set_in_service_config {
 [[ -z "${SYSTEMS}" ]] && \
     echo "Mandatory variable SYSTEMS is not set. Add -e SYSTEMS={...} to your arguments." && exit 1
 
+set_in_service_config systems ${SYSTEMS}
+
 # check if a new group agent should be generated for the service
 if [[ -z "${NEW_GROUP_AGENT}" ]]; then
   # NEW_GROUP_AGENT is undefined
