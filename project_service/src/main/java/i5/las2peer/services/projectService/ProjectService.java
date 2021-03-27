@@ -152,6 +152,17 @@ public class ProjectService extends RESTService {
 		}
 		return true;
 	}
+	
+	/**
+	 * Wrapper for /changeMetadata method provided as part of the REST interface.
+	 * This method can be used for RMI and does not return a Response object which
+	 * breaks RMI because it is not serializable.
+	 * @param system System where the metadata should be changed.
+	 * @param body Body that gets forwarded to /changeMetadata method.
+	 */
+	public void changeMetadataRMI(String system, String body) {
+		this.changeMetadata(system, body);
+	}
 
 	/**
 	 * Creates a new project in the pastry storage. Therefore, the user needs to be
@@ -192,7 +203,6 @@ public class ProjectService extends RESTService {
 			Agent agent = Context.getCurrent().getMainAgent();
 			Envelope env = null;
 			Envelope env2 = null;
-			// String id = "";
 			Project project;
 
 			try {
@@ -237,35 +247,26 @@ public class ProjectService extends RESTService {
 
 			ProjectContainer cc = new ProjectContainer();
 
-			// try to create group
-			// groupAgent = Context.get().createGroupAgent(members, name);
 			cc.addProject(project);
 			try {
-				System.out.println("Creating envelope");
 				// create envelope for project using the group agent
 				env = Context.get().createEnvelope(identifier, groupAgent);
-				System.out.println("Setting envelope content");
 				// set the project container (which only contains the new project) as the
 				// envelope content
 				env.setContent(cc);
-				System.out.println("Storing envelope");
 				// store envelope using the group agent
 				Context.get().storeEnvelope(env, groupAgent);
-				System.out.println("Storing complete");
 
 				// writing to user
 				try {
-					// try to add project to project list (with ServiceAgent)
-					System.out.println("A");
+					// try to add project to project list (with service group agent)
 					env2 = Context.get().requestEnvelope(identifier2, serviceGroupAgent);
 					cc = (ProjectContainer) env2.getContent();
 					cc.addProject(project);
 					env2.setContent(cc);
 					Context.get().storeEnvelope(env2, serviceGroupAgent);
-					System.out.println("B");
 				} catch (EnvelopeNotFoundException e) {
-					// create new project list (with ServiceAgent)
-					System.out.println("C");
+					// create new project list (with service group agent)
 					cc = new ProjectContainer();
 					env2 = Context.get().createEnvelope(identifier2, serviceGroupAgent);
 					env2.setPublic();
