@@ -365,6 +365,68 @@ public class ProjectService extends RESTService {
 	}
 	
 	/**
+	 * Method for loading information on a single project.
+	 * @param system This prefix is used to store all the envelopes of a system. It should be
+	 *        unique for every system using the project service.
+	 * @param projectName Name of the project to load.
+	 * @return
+	 */
+	@GET
+	@Path("/{system}/{projectName}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@ApiOperation(value = "Returns the project with the given name if it exists and the user has read access.")
+	@ApiResponses(value = { @ApiResponse(code = HttpURLConnection.HTTP_OK, message = "OK, project fetched."),
+			@ApiResponse(code = HttpURLConnection.HTTP_FORBIDDEN, message = "Not allowed to access project."),
+			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find project with given name."),
+			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
+	public Response getProjectByName(@PathParam("system") String system, @PathParam("projectName") String projectName) {
+		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
+		GroupAgent serviceGroupAgent = getServiceGroupAgent();
+		if (serviceGroupAgent == null)
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
+					.build();
+
+		String identifier = getProjectListIdentifier(system);
+		try {
+			Envelope stored = Context.get().requestEnvelope(identifier, serviceGroupAgent);
+			ProjectContainer cc = (ProjectContainer) stored.getContent();
+			
+			Project p = cc.getProjectByName(projectName);
+			if(p != null) {
+				// To check whether the user is a member of the project/group, we need the group
+				// identifier
+				String groupId = p.getGroupIdentifier();
+				JSONObject projectJSON = p.toJSONObject();
+				try {
+					GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, Context.get().getMainAgent());
+					// user is allowed to access group agent => user is a project/group member
+					// add attribute to project JSON which tells that the user is a project member
+					projectJSON.put("is_member", true);
+					return Response.status(HttpURLConnection.HTTP_OK).entity(projectJSON.toJSONString()).build();
+				} catch (AgentAccessDeniedException e) {
+					// user is not allowed to access group agent => user is no project/group member
+					// only return this project if the service is configured that all projects are
+					// readable by any user
+					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
+						projectJSON.put("is_member", false);
+						return Response.status(HttpURLConnection.HTTP_OK).entity(projectJSON.toJSONString()).build();
+					} else {
+						// user is not allowed to read this project
+						return Response.status(HttpURLConnection.HTTP_FORBIDDEN).build();
+					}
+				}
+			} else {
+				// found no project with given name
+				return Response.status(HttpURLConnection.HTTP_NOT_FOUND).build();
+			}
+		} catch (Exception e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Unknown error occured: " + e.getMessage()).build();
+		}
+	}
+	
+	/**
 	 * Deleted the project with the given name.
 	 * @param system This prefix is used to store all the envelopes of a system. It should be
 	 *        unique for every system using the project service.
