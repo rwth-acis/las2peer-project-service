@@ -159,9 +159,26 @@ public class ProjectService extends RESTService {
 	 * breaks RMI because it is not serializable.
 	 * @param system System where the metadata should be changed.
 	 * @param body Body that gets forwarded to /changeMetadata method.
+	 * @return Whether request was successful.
 	 */
-	public void changeMetadataRMI(String system, String body) {
-		this.changeMetadata(system, body);
+	public boolean changeMetadataRMI(String system, String body) {
+		Response r = this.changeMetadata(system, body);
+		return r.getStatus() == HttpURLConnection.HTTP_OK;
+	}
+	
+    /**
+     * Method for RMI to request the metadata of a project.	
+     * @param system System where the metadata should be searched.
+     * @param projectName Name of the project
+     * @return Metadata as JSONObject or null if error occurred.
+     */
+	public JSONObject getProjectMetadataRMI(String system, String projectName) {
+		Response r = this.getProjectByName(system, projectName);
+		if(r.getStatus() != 200) return null;
+		String entity = (String) r.getEntity();
+		JSONObject projectJSON = (JSONObject) JSONValue.parse(entity);
+		JSONObject metadata = (JSONObject) projectJSON.get("metadata");
+		return metadata;
 	}
 
 	/**
