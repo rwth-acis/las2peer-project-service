@@ -1,8 +1,3 @@
-import 'yjs/dist/y';
-import 'y-memory/dist/y-memory';
-import 'y-websockets-client/dist/y-websockets-client';
-import 'y-map/dist/y-map';
-
 export default class OnlineUserListHelper {
 
   /**
