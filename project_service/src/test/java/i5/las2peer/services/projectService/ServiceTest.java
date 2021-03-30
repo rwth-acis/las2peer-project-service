@@ -41,8 +41,12 @@ public class ServiceTest {
 	private static UserAgentImpl testAgentEve;
 	private static final String testPassEve = "evespass";
 
-	public static final String system = "test";
-	private static final String mainPath = "projects/" + system + "/";
+	// important: the system names need to match the systems that are configured
+	// in the .properties file used for the ServiceTest
+	public static final String system1 = "test";
+	public static final String system2 = "othersystem";
+	private static final String mainPath = "projects/" + system1 + "/";
+	private static final String mainPath2 = "projects/" + system2 + "/";
 
 	private String identifierGroupA;
 	private static final String nameGroupA = "groupA";
@@ -185,7 +189,41 @@ public class ServiceTest {
 			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
 			JSONObject resultJSON = (JSONObject) JSONValue.parse(result.getResponse().trim());
 			JSONArray projectsJSON = (JSONArray) resultJSON.get("projects");
-			Assert.assertEquals(1, projectsJSON.size());
+			int projectCountSystem1 = projectsJSON.size();
+			Assert.assertEquals(1, projectCountSystem1);
+			
+			// now we are testing adding a project to the second system
+			// we use the same name, as this should not be a problem in a different system
+			result = client.sendRequest("POST", mainPath2,
+					this.getProjectJSON("Project1_testGetProjects", this.nameGroupA, this.identifierGroupA));
+			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			// now we also test it with a different name
+			result = client.sendRequest("POST", mainPath2,
+					this.getProjectJSON("Project1_testGetProjects2", this.nameGroupA, this.identifierGroupA));
+			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			
+			// now get projects of system1 again, to verify that no project was added there
+			result = client.sendRequest("GET", mainPath, "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			resultJSON = (JSONObject) JSONValue.parse(result.getResponse().trim());
+			projectsJSON = (JSONArray) resultJSON.get("projects");
+			Assert.assertEquals(projectCountSystem1, projectsJSON.size());
+			
+			// now check if projects in system2 exists
+			// here we also test the method getProjectByName
+			result = client.sendRequest("GET", "projects/" + system2 + "/Project1_testGetProjects", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			result = client.sendRequest("GET", "projects/" + system2 + "/Project1_testGetProjects2", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_OK, result.getHttpCode());
+			
+			// now test getProjectByName with a non-existing project
+			result = client.sendRequest("GET", "projects/" + system2 + "/does_not_exist", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_NOT_FOUND, result.getHttpCode());
+			
+			// now test getProjectByName method with an agent who is no member of groupA
+			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
+			result = client.sendRequest("GET", "projects/" + system2 + "/Project1_testGetProjects", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getHttpCode());
 		} catch (Exception e) {
 			e.printStackTrace();
 			Assert.fail(e.toString());
