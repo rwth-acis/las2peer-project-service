@@ -282,8 +282,10 @@ export class ProjectList extends LitElement {
                 ${this.getListOfProjectOnlineUsers(project.name) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
                   <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.name)}</p>
                   <slot name="project-${project.id}"></slot>
-                  <iron-icon icon="icons:more-vert" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
-                    @click=${() => this.openProjectOptionsDialog(project)}></iron-icon>
+                  ${project.is_member ? html `
+                    <iron-icon icon="icons:more-vert" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
+                      @click=${() => this.openProjectOptionsDialog(project)}></iron-icon>
+                  ` : html``}
                 </div>
               </div>
             </paper-card>
