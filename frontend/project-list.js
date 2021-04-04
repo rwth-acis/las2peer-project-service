@@ -475,12 +475,7 @@ export class ProjectList extends LitElement {
     // clear current project list
     this.projects = [];
     this.listedProjects = [];
-
-    /*
-    // only send authHeader when not all projects should be shown, but only the
-    // one from the current user
-    const headers = allProjects? undefined : Auth.getAuthHeader();
-*/
+    
     fetch(this.projectServiceURL + "/projects/" + this.system, {
       method: "GET",
       headers: Auth.getAuthHeaderWithSub()
@@ -494,6 +489,16 @@ export class ProjectList extends LitElement {
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
 
+      // send event (containing every project, not only the ones from the user)
+      let event = new CustomEvent("projects-loaded", {
+        detail: {
+          projects: data.projects
+        },
+        bubbles: true
+      });
+      this.dispatchEvent(event);
+
+
       // if we only want to show the projects, where the user is a member of, we need to filter out some projects
       if(!allProjects) data.projects = data.projects.filter(project => project.is_member);
 
@@ -501,19 +506,6 @@ export class ProjectList extends LitElement {
       this.projects = data.projects;
       // set projects that should be shown (currently all)
       this.listedProjects = data.projects;
-
-      let event = new CustomEvent("projects-loaded", {
-        detail: {
-          projects: this.projects
-        },
-        bubbles: true
-      });
-      this.dispatchEvent(event);
-
-      // load online users
-  /*    for(let i in this.projects) {
-        this.loadListOfProjectOnlineUsers(this.projects[i].id);
-      }*/
     }).catch(error => {
       if(error.message == "401") {
         // user is not authorized
