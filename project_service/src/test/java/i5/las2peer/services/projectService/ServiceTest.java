@@ -224,6 +224,12 @@ public class ServiceTest {
 			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
 			result = client.sendRequest("GET", "projects/" + system2 + "/Project1_testGetProjects", "");
 			Assert.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getHttpCode());
+			
+			// test with non-existing system (both GET methods, the one for all projects and the one for a single project)
+			result = client.sendRequest("GET", "projects/doesnotexist", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			result = client.sendRequest("GET", "projects/doesnotexist/Project", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
 		} catch (Exception e) {
 			e.printStackTrace();
 			Assert.fail(e.toString());
@@ -284,6 +290,10 @@ public class ServiceTest {
 			result = client.sendRequest("POST", mainPath, this.getProjectJSON("Project2_testPostProject", "groupName",
 					this.identifierGroupA, metadata.toJSONString()));
 			Assert.assertEquals(HttpURLConnection.HTTP_CREATED, result.getHttpCode());
+			
+			// test with non-existing system
+			result = client.sendRequest("POST", "projects/doesnotexist", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
 		} catch (Exception e) {
 			e.printStackTrace();
 			Assert.fail(e.toString());
@@ -291,7 +301,7 @@ public class ServiceTest {
 	}
 
 	@Test
-	public void testRMIMethodHasAccessToProject() {
+	public void testRMIMethodsHasAccessToProject() {
 		try {
 			MiniClient client = new MiniClient();
 			client.setConnectorEndpoint(connector.getHttpEndpoint());
@@ -342,6 +352,16 @@ public class ServiceTest {
 			o.put("projectName", projectName);
 			o.put("newGroupId", this.identifierGroup1);
 			o.put("newGroupName", this.nameGroup1);
+			
+			// try chaning group but use incorrect system name
+			result = client.sendRequest("POST", "projects/systemdoesnotexist/changeGroup", o.toJSONString());
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			
+			// try changing group without being a logged in user
+			client = new MiniClient();
+			client.setConnectorEndpoint(connector.getHttpEndpoint());
+			result = client.sendRequest("POST", mainPath + "changeGroup", o.toJSONString());
+			Assert.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, result.getHttpCode());
 
 			// try changing group using eve (who is no project member)
 			client.setLogin(testAgentEve.getIdentifier(), testPassEve);
@@ -368,8 +388,12 @@ public class ServiceTest {
 			MiniClient client = new MiniClient();
 			client.setConnectorEndpoint(connector.getHttpEndpoint());
 			
+			// try with invalid system name
+			ClientResponse result = client.sendRequest("POST", "projects/systemdoesnotexist/changeMetadata", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			
 			// try to change metadata without being logged in
-			ClientResponse result = client.sendRequest("POST", mainPath + "changeMetadata", "");
+			result = client.sendRequest("POST", mainPath + "changeMetadata", "");
 			Assert.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, result.getHttpCode());
 
 			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
@@ -437,8 +461,12 @@ public class ServiceTest {
 
 			client.setLogin(testAgentAdam.getIdentifier(), testPassAdam);
 			
+			// try with non-existing system name
+			ClientResponse result = client.sendRequest("DELETE", "projects/doesnotexist/not-existing-project", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			
 			// try to delete a non-existing project
-			ClientResponse result = client.sendRequest("DELETE", mainPath + "not-existing-project", "");
+			result = client.sendRequest("DELETE", mainPath + "not-existing-project", "");
 			Assert.assertEquals(HttpURLConnection.HTTP_NOT_FOUND, result.getHttpCode());
 			
 			// create project using adam and group A

@@ -52,11 +52,11 @@ import i5.las2peer.services.projectService.project.Project;
 /**
  * las2peer-project-service
  * 
- * A las2peer service for managing projects and their users.
+ * A las2peer service for managing projects for las2peer groups.
  * 
  */
 @Api
-@SwaggerDefinition(info = @Info(title = "las2peer Project Service", version = "1.0.0", description = "A las2peer service for managing projects and their users."))
+@SwaggerDefinition(info = @Info(title = "las2peer Project Service", version = "1.0.0", description = "A las2peer service for managing projects for las2peer groups."))
 @ServicePath("/projects")
 @ManualDeployment
 public class ProjectService extends RESTService {
@@ -592,12 +592,8 @@ public class ProjectService extends RESTService {
 							}
 						}
 					}
-
-					// create another list for storing the projects that should be returned as JSON
-					// objects
-					List<JSONObject> projectsJSON = new ArrayList<>();
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 				} catch (EnvelopeNotFoundException e) {
-
 					return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("No projects available.").build();
 				} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
 					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
@@ -607,8 +603,6 @@ public class ProjectService extends RESTService {
 				// are missing
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 			}
-
-			return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 		}
 	}
 
@@ -702,6 +696,7 @@ public class ProjectService extends RESTService {
 						}
 					}
 				}
+				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			} catch (EnvelopeNotFoundException e) {
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("No projects available.").build();
 			} catch (EnvelopeAccessDeniedException | EnvelopeOperationFailedException e) {
@@ -712,8 +707,6 @@ public class ProjectService extends RESTService {
 			// are missing
 			return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 		}
-
-		return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 	}
 	
 	/**
