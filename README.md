@@ -65,7 +65,8 @@ Therefore, the project service provides the following methods:
 | Method                                         | Description |
 |------------------------------------------------|-------------|
 | boolean hasAccessToProject(String system, String projectName) | This method may be used to verify if a user is allowed to write-access a project. Returns true, if the calling agent has access to project. Returns false otherwise (or if project with given name does not exist). |
-
+| boolean changeMetadataRMI(String system, String body) | RMI wrapper for "/{system}/changeMetadata" REST method. Returns true if metadata could be updated successfully. |
+| JSONObject getProjectMetadataRMI(String system, String projectName) | This method may be used to access the metadata of a project via RMI. Returns the metadata as a JSONObject or null if access to project was not granted. |
 
 Start
 --------
