@@ -1,4 +1,5 @@
 # \<project-list\>
+[![npmjs](https://img.shields.io/npm/v/@rwth-acis/las2peer-project-service-frontend)](https://www.npmjs.com/package/@rwth-acis/las2peer-project-service-frontend)
 
 A LitElement for listing projects given by the las2peer-project-service and for creating new projects.
 
