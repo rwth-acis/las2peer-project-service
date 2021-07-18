@@ -219,6 +219,7 @@ export class ProjectList extends LitElement {
     this.projectServiceURL = "http://127.0.0.1:8080";
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
     window.addEventListener('metadata-change-request', this._changeMetadata.bind(this));
+    window.addEventListener('metadata-reload-request', this._reloadMetadata.bind(this));
     this.disableAllProjects = false;
     this.yjsAddress = "http://127.0.0.1:1234";
     this.yjsResourcePath = "./socket.io";
@@ -270,6 +271,32 @@ export class ProjectList extends LitElement {
         //   location.reload();
       } else {
         console.log(error);
+      }
+    });
+  }
+
+  /**
+   * Gets called on the "metadata-reload-request" event and re-fetches the metadata of the currently selected
+   * project. The fetched metadata gets put into the project's Yjs room.
+   * This event should be used if the metadata got updated from somewhere else than the frontend, because then
+   * using the "metadata-change-request" event is not working anymore as the project-list contains out-of-date
+   * metadata and is not able to send the update metadata request to the project service successfully.
+   * @param event
+   * @private
+   */
+  _reloadMetadata(event) {
+    fetch(this.projectServiceURL + "/projects/" + this.system + "/" + this.selectedProject.name, {
+      method: "GET",
+      headers: Auth.getAuthHeaderWithSub()
+    }).then(response => {
+      if(!response.ok) throw Error(response.status);
+      return response.json();
+    }).then(data => {
+      const metadata = data.metadata;
+
+      if(this.y) {
+        // update metadata in yjs room => this will also update it in this.selectedProject automatically
+        this.y.share.data.set("projectMetadata", metadata);
       }
     });
   }
