@@ -567,7 +567,7 @@ export class ProjectList extends LitElement {
       connector: {
         name: "websockets-client", // use the websockets connector
         room: "projects_" + this.system + "_" + projectName,
-        authI: {
+        authInfo: {
           accessToken: Auth.getAccessToken(),
           basicAuth: Auth.getBasicAuthPart()
         },
