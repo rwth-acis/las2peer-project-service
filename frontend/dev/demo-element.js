@@ -33,9 +33,11 @@ export class DemoElement extends LitElement {
     console.log(event.detail.access_token);
     Auth.setAuthDataToLocalStorage(event.detail.access_token);
 
-      var url = localStorage.userinfo_endpoint + '?access_token=' + localStorage.access_token;
+      var url = "https://api.learning-layers.eu/auth/realms/main/protocol/openid-connect/userinfo";
       console.log(url);
-      fetch(url, {method: "GET"}).then(response => {
+      fetch(url, {method: "GET", headers: {
+        "Authorization": "Bearer " + Auth.getAccessToken()
+      }}).then(response => {
         if(response.ok) {
           return response.json();
         }
@@ -61,8 +63,8 @@ export class DemoElement extends LitElement {
     service="Project List Demo"
     oidcpopupsigninurl="/callbacks/popup-signin-callback.html"
     oidcpopupsignouturl="/callbacks/popup-signout-callback.html"
-    oidcsilentsigninturl="/callbacks/silent-callback.html"
-    oidcclientid="d8e6c0d3-fb09-49cc-9a6d-f1763d39a0a7"
+    oidcsilentsigninurl="/callbacks/silent-callback.html"
+    oidcclientid="localtestclient"
     suppresswidgeterror="true"
     autoAppendWidget=true
     ></las2peer-frontend-statusbar>
@@ -88,11 +90,9 @@ export class DemoElement extends LitElement {
   }
 
   _triggerChange(event){
-    let events = new CustomEvent("metadata-changed", {
+    let events = new CustomEvent("metadata-change-request", {
       detail: {
-        message: "Changed Project",
-        project: this.selectedProject,
-        newMetadata: {"random":this.shadowRoot.querySelector("#metadataInput").value}
+        "random": this.shadowRoot.querySelector("#metadataInput").value
       },
       bubbles: true
     });
@@ -116,6 +116,13 @@ export class DemoElement extends LitElement {
    */
   _onProjectsLoaded(event) {
     let projects = event.detail.projects;
+
+    window.addEventListener("metadata-changed", e => {
+        console.log("metadata has changed", e.detail);
+        const project = JSON.parse(this.selectedProject);
+        project.metadata = e.detail;
+        this.selectedProject = JSON.stringify(project);
+    });
     
     // uncomment this, if you want to test the online user list
     /*let mapProjectRooms = {};
