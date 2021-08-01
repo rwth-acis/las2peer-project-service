@@ -575,7 +575,7 @@ export class ProjectList extends LitElement {
     let event = new CustomEvent("project-selected", {
       detail: {
         message: "Selected project in project list.",
-        project: this.selectedProject
+        project: JSON.parse(JSON.stringify(this.selectedProject))
       },
       bubbles: true
     });
@@ -612,14 +612,14 @@ export class ProjectList extends LitElement {
         if(event.name == "projectMetadata") {
           this.selectedProject.metadata = y.share.data.get("projectMetadata");
           window.dispatchEvent(new CustomEvent("metadata-changed", {
-            detail: this.selectedProject.metadata,
+            detail: JSON.parse(JSON.stringify(this.selectedProject.metadata)),
             bubbles: true
           }));
         }
       });
 
       if(!currentMetadataYjs) {
-        y.share.data.set("projectMetadata", this.selectedProject.metadata);
+        y.share.data.set("projectMetadata", JSON.parse(JSON.stringify(this.selectedProject.metadata)));
       }
     }.bind(this));
   }
