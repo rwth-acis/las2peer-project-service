@@ -9,6 +9,10 @@
     "serve": "web-dev-server --node-resolve --watch --open",
     "build": "echo \"This is not a TypeScript project, so no need to build.\""
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rwth-acis/las2peer-project-service"
+  },
   "author": {
     "name": "ACIS Group, RWTH Aachen",
     "email": "acis@dbis.rwth-aachen.de"
