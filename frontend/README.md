@@ -23,7 +23,7 @@ Then you can use the project-list element as follows:
 ```
 
 Here, SYSTEM_NAME needs to match with a system that is configured in the project-service.
-For the configuration of systems, see the [main README](/).
+For the configuration of systems, see the [main README](https://github.com/rwth-acis/las2peer-project-service).
 Set PROJECT_SERVICE_URL and CONTACT_SERVICE_URL to the address of the webconnector, where the respective service can be found.
 
 The project-list element uses [Yjs](https://github.com/yjs/yjs) to share the metadata of the currently selected/opened project with other project members that have selected the same project.
