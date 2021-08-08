@@ -583,9 +583,7 @@ export class ProjectList extends LitElement {
 
     // join Yjs room for the project metadata
     if(this.y) {
-      // TODO: check if there is a way to clean up the previous used yjs object
-      //this.y.destroy();
-      //this.y = undefined;
+      this.y.connector.disconnect();
     }
     Y({
       db: {
