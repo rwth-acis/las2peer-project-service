@@ -3,7 +3,7 @@
 
 The project-list is a LitElement for listing projects given by the las2peer-project-service and for creating new projects.
 
-## Basic Usage
+Basic Usage
 -------------------
 
 To use the project-list LitElement in your project, just install it from [npmjs](https://www.npmjs.com/package/@rwth-acis/las2peer-project-service-frontend):
@@ -23,7 +23,7 @@ Then you can use the project-list element as follows:
 ```
 
 Here, SYSTEM_NAME needs to match with a system that is configured in the project-service.
-For the configuration of systems, see the [main README](../).
+For the configuration of systems, see the [main README](/).
 Set PROJECT_SERVICE_URL and CONTACT_SERVICE_URL to the address of the webconnector, where the respective service can be found.
 
 The project-list element uses [Yjs](https://github.com/yjs/yjs) to share the metadata of the currently selected/opened project with other project members that have selected the same project.
@@ -36,7 +36,7 @@ The extensions can be found in the rwth-acis forks [rwth-acis/y-websockets-serve
 
 You may also use the `disableAllProjects` attribute to disable the tab where all available projects are listed.
 
-## Events
+Events
 -------------
 
 **Events fired by the project-list element:**
@@ -71,7 +71,7 @@ If you send the event and set the event details to the updated metadata, the pro
 If you updated the metadata without using the "metadata-change-request" event, as an example by using the RMI interface of the project-service, then you should use this event to inform the project-list element about it.
 When receiving the event, the project-list will fetch the metadata from the project-service again and will also send a "metadata-changed" event.
 
-## Extension: SyncMeta Online User List
+Extension: SyncMeta Online User List
 -------------------------------------------
 
 If your projects are using [SyncMeta](https://github.com/rwth-acis/syncmeta), you can use the online user list extension.
@@ -80,7 +80,7 @@ To use the online user list, the project-list element needs to know which projec
 You can use the method "setOnlineUserListYjsRooms", that the project-list element provides, for this.
 As a parameter you use a map that maps project names to a list of Yjs room names (which are used for modelling inside the project).
 
-## Development
+Development
 -----------------------------
 For testing the element during development, run `npm i` and  `npm run serve`.
 There is a demo available that can be used during development.
