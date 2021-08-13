@@ -524,6 +524,12 @@ export class ProjectList extends LitElement {
     this.projects = [];
     this.listedProjects = [];
 
+    if(!Auth.userInfoAvailable()) {
+        // user is not logged in (cannot load projects)
+        this.projectsLoading = false;
+        return;
+    }
+
     fetch(this.projectServiceURL + "/projects/" + this.system, {
       method: "GET",
       headers: Auth.getAuthHeaderWithSub()

@@ -35,6 +35,10 @@ export default class Auth {
     }
   }
 
+  static userInfoAvailable() {
+    return localStorage.getItem(this.KEY_USER_INFO) !== null;
+  }
+
   static getBasicAuthPart() {
     var userInfo = JSON.parse(localStorage.getItem(this.KEY_USER_INFO));
     return btoa(userInfo.preferred_username + ":" + userInfo.sub);
