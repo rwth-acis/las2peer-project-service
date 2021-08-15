@@ -56,6 +56,8 @@ public class ServiceTest {
 	// the used .properties file can be found in project_service/properties folder
 	private static final String projectServicePropertiesPath = "properties/i5.las2peer.services.projectService.ProjectService.properties";
 	
+	private final ServiceNameVersion rmiTestServiceName = new ServiceNameVersion(RMITestService.class.getName(), "1.0.0");
+	
 	/**
 	 * Called before a test starts.
 	 * 
@@ -127,7 +129,7 @@ public class ServiceTest {
 
         
 		// also start RMI test service
-		node.startService(new ServiceNameVersion(RMITestService.class.getName(), "1.0.0"), "a pass");
+		node.startService(rmiTestServiceName, "a pass");
 
 		// start connector
 		connector = new WebConnector(true, 0, false, 0); // port 0 means use system defined port
@@ -294,6 +296,23 @@ public class ServiceTest {
 			// test with non-existing system
 			result = client.sendRequest("POST", "projects/doesnotexist", "");
 			Assert.assertEquals(HttpURLConnection.HTTP_BAD_REQUEST, result.getHttpCode());
+			
+			// now stop the RMITestService once (and verify that it is stopped)
+			node.stopService(rmiTestServiceName);
+			Assert.assertEquals(false, node.hasService(rmiTestServiceName));
+			
+			// create a project (while event listener service or in this case RMITestService is not running anymore)
+			// this should not be possible (because the event cannot be sent)
+			result = client.sendRequest("POST", mainPath, 
+					this.getProjectJSON("rmi-test-service-unavailable", "groupName", this.identifierGroupA));
+			Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, result.getHttpCode());
+			// if event listener is not available, the project should not be created => verify this
+			result = client.sendRequest("GET", "projects/" + system1 + "/rmi-test-service-unavailable", "");
+			Assert.assertEquals(HttpURLConnection.HTTP_NOT_FOUND, result.getHttpCode());
+			
+			// start RMITestService again (maybe it is needed by other tests)
+			node.startService(rmiTestServiceName, "a pass");
+			Assert.assertEquals(true, node.hasService(rmiTestServiceName));
 		} catch (Exception e) {
 			e.printStackTrace();
 			Assert.fail(e.toString());

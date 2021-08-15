@@ -299,6 +299,15 @@ public class ProjectService extends RESTService {
 			if (this.eventManager.sendProjectCreatedEvent(Context.get(), system, project.toJSONObject())) {
 				return Response.status(HttpURLConnection.HTTP_CREATED).entity("Added Project To l2p Storage").build();
 			} else {
+				// could not send event to event listener service
+				// delete project again
+				try {
+					// remove project from "project envelope"
+					this.deleteProjectFromProjectEnvelope(system, project.getName(), groupAgent);
+					
+					// also update project list and remove the project there
+					this.removeProjectFromProjectListEnvelope(system, project.getName(), serviceGroupAgent);
+				} catch (Exception e) {}
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
 						.entity("Sending event to event listener service failed.").build();
 			}
@@ -468,23 +477,13 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
 					.build();
 		
-		String projectIdentifier = getProjectIdentifier(system, projectName);
 		Project deletedProject;
 		try {
 			// remove project from "project envelope"
-			Envelope env = Context.get().requestEnvelope(projectIdentifier, agent);
-			ProjectContainer cc = (ProjectContainer) env.getContent();
-			deletedProject = cc.getProjectByName(projectName);
-			cc.removeProject(projectName);
-			env.setContent(cc);
-			Context.get().storeEnvelope(env, agent);
+			deletedProject = this.deleteProjectFromProjectEnvelope(system, projectName, agent);
 			
 			// also update project list and remove the project there
-			Envelope envList = Context.get().requestEnvelope(getProjectListIdentifier(system), serviceGroupAgent);
-			ProjectContainer ccList = (ProjectContainer) envList.getContent();
-			ccList.removeProject(projectName);
-			envList.setContent(ccList);
-			Context.get().storeEnvelope(envList, serviceGroupAgent);
+			this.removeProjectFromProjectListEnvelope(system, projectName, serviceGroupAgent);
 		} catch (EnvelopeAccessDeniedException e) {
 			return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
 					.entity("Agent is no project member and not allowed to delete it.").build();
@@ -501,6 +500,30 @@ public class ProjectService extends RESTService {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
 					.entity("Sending event to event listener service failed.").build();
 		}
+	}
+	
+	private Project deleteProjectFromProjectEnvelope(String system, String projectName, Agent agent) 
+			throws EnvelopeAccessDeniedException, EnvelopeNotFoundException, EnvelopeOperationFailedException {
+		Project deletedProject;
+		String projectIdentifier = getProjectIdentifier(system, projectName);
+		
+		Envelope env = Context.get().requestEnvelope(projectIdentifier, agent);
+		ProjectContainer cc = (ProjectContainer) env.getContent();
+		deletedProject = cc.getProjectByName(projectName);
+		cc.removeProject(projectName);
+		env.setContent(cc);
+		Context.get().storeEnvelope(env, agent);
+		
+		return deletedProject;
+	}
+	
+	private void removeProjectFromProjectListEnvelope(String system, String projectName, GroupAgent serviceGroupAgent) 
+			throws EnvelopeAccessDeniedException, EnvelopeNotFoundException, EnvelopeOperationFailedException {
+		Envelope envList = Context.get().requestEnvelope(getProjectListIdentifier(system), serviceGroupAgent);
+		ProjectContainer ccList = (ProjectContainer) envList.getContent();
+		ccList.removeProject(projectName);
+		envList.setContent(ccList);
+		Context.get().storeEnvelope(envList, serviceGroupAgent);
 	}
 
 	/**
@@ -726,7 +749,7 @@ public class ProjectService extends RESTService {
 	 *        for every system using the project service.
 	 * @return The identifier of the envelope for the project with the given name.
 	 */
-	private static String getProjectListIdentifier(String system) {
+	public static String getProjectListIdentifier(String system) {
 		return system + "_" + projects_prefix;
 	}
 	
