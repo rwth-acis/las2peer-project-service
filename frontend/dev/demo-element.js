@@ -20,7 +20,6 @@ export class DemoElement extends LitElement {
   }
   // I didnt get how to use ready, so simply used firstUpdated which is always called after render...
   firstUpdated(changedProperties){
-    console.log("sas");
     const statusBar = this.shadowRoot.querySelector("#statusBar");
     // in the following we use (event) => this.method(event) in order to be able to access
     // this.shadowRoot in the handleLogin and handleLogout methods
@@ -29,24 +28,25 @@ export class DemoElement extends LitElement {
   }
 
   handleLogin(event) {
-    console.log("swsqwsw");
     console.log(event.detail.access_token);
     Auth.setAuthDataToLocalStorage(event.detail.access_token);
 
-      var url = "https://api.learning-layers.eu/auth/realms/main/protocol/openid-connect/userinfo";
-      console.log(url);
-      fetch(url, {method: "GET", headers: {
-        "Authorization": "Bearer " + Auth.getAccessToken()
-      }}).then(response => {
-        if(response.ok) {
-          return response.json();
-        }
-      }).then(data => {
-        console.log(data.name);
-       // const userInfo = Common.getUserInfo();
-        //userInfo.sub = data.sub;
-        Common.storeUserInfo(data);
-      });
+    var url = "https://api.learning-layers.eu/auth/realms/main/protocol/openid-connect/userinfo";
+    fetch(url, {method: "GET", headers: {
+      "Authorization": "Bearer " + Auth.getAccessToken()
+    }}).then(response => {
+      if(response.ok) {
+        return response.json();
+      }
+    }).then(data => {
+      console.log(data.name);
+      // const userInfo = Common.getUserInfo();
+      //userInfo.sub = data.sub;
+      Common.storeUserInfo(data);
+
+      // reload projects 
+      window.dispatchEvent(new CustomEvent("projects-reload-request", { bubbles: true }));
+    });
   }
 
   handleLogout() {

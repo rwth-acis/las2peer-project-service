@@ -220,6 +220,7 @@ export class ProjectList extends LitElement {
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
     window.addEventListener('metadata-change-request', this._changeMetadata.bind(this));
     window.addEventListener('metadata-reload-request', this._reloadMetadata.bind(this));
+    window.addEventListener('projects-reload-request', (e) => this.showProjects(false));
     this.disableAllProjects = false;
     this.yjsAddress = "http://127.0.0.1:1234";
     this.yjsResourcePath = "./socket.io";
@@ -519,7 +520,6 @@ export class ProjectList extends LitElement {
   showProjects(allProjects) {
     // set loading to true
     this.projectsLoading = true;
-    console.log("sasaq");
     // clear current project list
     this.projects = [];
     this.listedProjects = [];

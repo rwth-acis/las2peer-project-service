@@ -41,18 +41,18 @@ Events
 
 **Events fired by the project-list element:**
 
-`"projects-loaded"`:
+`projects-loaded`:
 
 The project-list element fires this event whenever the projects are reloaded from the project-service.
 The event details contain a list of all projects that the current user can access.
 Depending on how the visibility of all projects is configured in the project-service, also projects where the current user is no member of will be part of the list.
 
-`"project-selected"`:
+`project-selected`:
 
 Whenever the user clicks on one of the projects in the list, this event will be fired.
 It contains detailed information on the selected project and its metadata.
 
-`"metadata-changed"`:
+`metadata-changed`:
 
 If the metadata of the currently selected/opened project got changed, this event will be fired.
 It contains the updated project metadata.
@@ -60,16 +60,21 @@ If you display the metadata in the UI and want to keep it up-to-date, then you c
 
 **Events that the project-list element listens for:**
 
-`"metadata-change-request"`:
+`metadata-change-request`:
 
 The project-list element listens to the event "metadata-change-request".
 It can be used to update the metadata of the currently selected project.
 If you send the event and set the event details to the updated metadata, the project-list element will send it to the project-service and after that the "metadata-changed" event will be fired.
 
-`"metadata-reload-request"`:
+`metadata-reload-request`:
 
 If you updated the metadata without using the "metadata-change-request" event, as an example by using the RMI interface of the project-service, then you should use this event to inform the project-list element about it.
 When receiving the event, the project-list will fetch the metadata from the project-service again and will also send a "metadata-changed" event.
+
+`projects-reload-request`:
+
+This event can be used to reload the list of projects.
+It might be used after the user has logged in.
 
 Extension: SyncMeta Online User List
 -------------------------------------------
