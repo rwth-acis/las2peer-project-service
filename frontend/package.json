@@ -1,6 +1,6 @@
 {
   "name": "@rwth-acis/las2peer-project-service-frontend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Frontend for las2peer project service.",
   "main": "project-list.js",
   "module": "project-list.js",
