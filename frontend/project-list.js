@@ -137,6 +137,12 @@ export class ProjectList extends LitElement {
         type: Array
       },
       /**
+       * The currently selected project, i.e. last one clicked on.
+       */
+      selectedProject: {
+        type: Object
+      },
+      /**
        * This property allows to disable the "All projects" tab. It can be set to "true" if only the projects where
        * the user is a member of should be listed. If set to "false", then all projects that are available will be
        * listed in the "All projects" tab.
@@ -164,26 +170,32 @@ export class ProjectList extends LitElement {
       },
 
       /**
-      * URL where the frontend can access the las2peer contact service REST API.
-      */
+       * URL where the frontend can access the las2peer contact service REST API.
+       */
       contactServiceURL: {
         type: String
       },
 
       /**
-       * Yjs address used for the online user list.
-       * Only required if the online user list is used.
+       * Yjs address that should be used for keeping the metadata in the frontend up-to-date.
+       * Can also be used for the online user list.
        */
       yjsAddress: {
         type: String
       },
 
       /**
-       * Yjs resource path used for the online user list.
-       * Only required if the online user list is used.
+       * Yjs resource path used for sharing the metadata and for the online user list.
        */
       yjsResourcePath: {
         type: String
+      },
+
+      /**
+       * Yjs instance.
+       */
+      y: {
+        type: Object
       },
 
       /**
@@ -200,12 +212,15 @@ export class ProjectList extends LitElement {
     super();
     this.groups = [];
     this.projects = [];
+    this.selectedProject = null;
     this.listedProjects = ["sss"];
     this.projectsOnlineUser = new Object();
     // use a default value for project service URL for local testing
     this.projectServiceURL = "http://127.0.0.1:8080";
     this.contactServiceURL = "http://127.0.0.1:8080/contactservice";
-    window.addEventListener('metadata-changed', this._changeMetadata.bind(this));
+    window.addEventListener('metadata-change-request', this._changeMetadata.bind(this));
+    window.addEventListener('metadata-reload-request', this._reloadMetadata.bind(this));
+    window.addEventListener('projects-reload-request', (e) => this.showProjects(false));
     this.disableAllProjects = false;
     this.yjsAddress = "http://127.0.0.1:1234";
     this.yjsResourcePath = "./socket.io";
@@ -218,15 +233,18 @@ export class ProjectList extends LitElement {
     this.showProjects(false);
   }
 
-  _changeMetadata(event){
-    console.log("Project is: " + event.detail.project);
-    console.log("New Metadata is: " + event.detail.newMetadata);
-    var project = JSON.parse(event.detail.project);
+  _changeMetadata(event) {
+    console.log(event);
+    let newMetadata = event.detail;
+
+    var project = this.selectedProject;
     var projectName =  project.name;
-    var oldMetadata =  project.metadata;
-    var newMetadata =  event.detail.newMetadata;
-    // due to my lack of experience in frontend programming, I didnt know how to access the this.projectserviceurl var :( 
-    fetch("http://127.0.0.1:8080"+ "/projects/" + this.system + "/changeMetadata/", {
+    var oldMetadata =  this.selectedProject.metadata;
+
+    console.log("Project is: ", project);
+    console.log("New Metadata is: ", newMetadata);
+
+    fetch(this.projectServiceURL + "/projects/" + this.system + "/changeMetadata/", {
       method: "POST",
       headers: Auth.getAuthHeaderWithSub(),
       body: JSON.stringify({
@@ -236,18 +254,50 @@ export class ProjectList extends LitElement {
         "newMetadata": newMetadata
       })
     }).then( response => {
-        if(!response.ok) throw Error(response.status);
-          return response.json();
+      if(!response.ok) throw Error(response.status);
+      return response.json();
     }).then(data => {
-        console.log(data);
+      console.log(data);
+
+      if(this.y) {
+        // since the service successfully updated the metadata, we can also update it in the Yjs room
+        this.y.share.data.set("projectMetadata", newMetadata);
+      }
+
     }).catch(error => {
       if(error.message == "401") {
         // user is not authorized
         // maybe the access token has expired
         Auth.removeAuthDataFromLocalStorage();
-     //   location.reload();
+        //   location.reload();
       } else {
         console.log(error);
+      }
+    });
+  }
+
+  /**
+   * Gets called on the "metadata-reload-request" event and re-fetches the metadata of the currently selected
+   * project. The fetched metadata gets put into the project's Yjs room.
+   * This event should be used if the metadata got updated from somewhere else than the frontend, because then
+   * using the "metadata-change-request" event is not working anymore as the project-list contains out-of-date
+   * metadata and is not able to send the update metadata request to the project service successfully.
+   * @param event
+   * @private
+   */
+  _reloadMetadata(event) {
+    fetch(this.projectServiceURL + "/projects/" + this.system + "/" + this.selectedProject.name, {
+      method: "GET",
+      headers: Auth.getAuthHeaderWithSub()
+    }).then(response => {
+      if(!response.ok) throw Error(response.status);
+      return response.json();
+    }).then(data => {
+      const metadata = data.metadata;
+
+      if(this.y) {
+        // update metadata in yjs room => this will also update it in this.selectedProject automatically
+        this.y.share.data.set("projectMetadata", metadata);
       }
     });
   }
@@ -410,12 +460,11 @@ export class ProjectList extends LitElement {
       // disable create button until user entered a project name
       this.shadowRoot.getElementById("dialog-button-create").disabled = true;
     }).catch(error => {
-      console.log("ssdlkjidhaidjkol" + error.message);
       if(error.message == "401") {
         // user is not authorized
         // maybe the access token has expired
         Auth.removeAuthDataFromLocalStorage();
-    //    location.reload();
+        //    location.reload();
       } else {
         console.log(error);
         // in case of contactservice not running, which should not happen in real deployment
@@ -428,7 +477,7 @@ export class ProjectList extends LitElement {
 
     });
   }
-  
+
 
   /**
    * Gets called when the search input gets updated by the user. Updates listedProjects array correspondingly.
@@ -471,11 +520,16 @@ export class ProjectList extends LitElement {
   showProjects(allProjects) {
     // set loading to true
     this.projectsLoading = true;
-    console.log("sasaq");
     // clear current project list
     this.projects = [];
     this.listedProjects = [];
-    
+
+    if(!Auth.userInfoAvailable()) {
+        // user is not logged in (cannot load projects)
+        this.projectsLoading = false;
+        return;
+    }
+
     fetch(this.projectServiceURL + "/projects/" + this.system, {
       method: "GET",
       headers: Auth.getAuthHeaderWithSub()
@@ -483,8 +537,6 @@ export class ProjectList extends LitElement {
       if(!response.ok) throw Error(response.status);
       return response.json();
     }).then(data => {
-      console.log("data");
-      console.log(data);
       console.log("Projects are", data.projects);
       // set loading to false, then the spinner gets hidden
       this.projectsLoading = false;
@@ -511,7 +563,7 @@ export class ProjectList extends LitElement {
         // user is not authorized
         // maybe the access token has expired
         Auth.removeAuthDataFromLocalStorage();
-     //   location.reload();
+        //   location.reload();
       } else {
         console.log(error);
       }
@@ -525,39 +577,79 @@ export class ProjectList extends LitElement {
    * @private
    */
   _onProjectItemClicked(projectName) {
-    // TODO: give full information on the project and whether the user is a member of it
+    this.selectedProject = this.getProjectByName(projectName);
     let event = new CustomEvent("project-selected", {
       detail: {
         message: "Selected project in project list.",
-        project: this.getProjectByName(projectName)
+        project: JSON.parse(JSON.stringify(this.selectedProject))
       },
       bubbles: true
     });
     this.dispatchEvent(event);
+
+    // join Yjs room for the project metadata
+    if(this.y) {
+      this.y.connector.disconnect();
+    }
+    Y({
+      db: {
+        name: "memory" // store the shared data in memory
+      },
+      connector: {
+        name: "websockets-client", // use the websockets connector
+        room: "projects_" + this.system + "_" + projectName,
+        authInfo: {
+          accessToken: Auth.getAccessToken(),
+          basicAuth: Auth.getBasicAuthPart()
+        },
+        //options: { resource: this.yjsResourcePath},
+        url: this.yjsAddress
+      },
+      share: { // specify the shared content
+        data: 'Map'
+      }
+    }).then(function(y) {
+      this.y = y;
+      const currentMetadataYjs = y.share.data.get("projectMetadata");
+
+      y.share.data.observe(event => {
+        if(event.name == "projectMetadata") {
+          this.selectedProject.metadata = y.share.data.get("projectMetadata");
+          window.dispatchEvent(new CustomEvent("metadata-changed", {
+            detail: JSON.parse(JSON.stringify(this.selectedProject.metadata)),
+            bubbles: true
+          }));
+        }
+      });
+
+      if(!currentMetadataYjs) {
+        y.share.data.set("projectMetadata", JSON.parse(JSON.stringify(this.selectedProject.metadata)));
+      }
+    }.bind(this));
   }
-  
+
 
   getProjectByName(name) {
     return this.listedProjects.find(x => x.name === name);
   }
 
-    /**
+  /**
    * Gets called when the user clicks on a project in the project list. Fires an event that notifies the parent
    * elements that a project got selected.
    * @param projectName Name of the project that got selected in the project list.
    * @private
    */
-     _onGroupChangeDone(project) {
-      // TODO: give full information on the project and whether the user is a member of it
-      let event = new CustomEvent("project-selected", {
-        detail: {
-          message: "Selected project in project list.",
-          project: project
-        },
-        bubbles: true
-      });
-      this.dispatchEvent(event);
-    }
+  _onGroupChangeDone(project) {
+    // TODO: give full information on the project and whether the user is a member of it
+    let event = new CustomEvent("project-selected", {
+      detail: {
+        message: "Selected project in project list.",
+        project: project
+      },
+      bubbles: true
+    });
+    this.dispatchEvent(event);
+  }
 
   /**
    * Gets called when the user clicks on the "Close" button in the create project dialog.

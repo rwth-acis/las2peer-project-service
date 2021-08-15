@@ -49,7 +49,6 @@ export default class OnlineUserListHelper {
       y.share.join.set("invisible_user", false);
 
       setTimeout(function () {
-        y.close();
         resolve(list);
       }, 5000);
     }));

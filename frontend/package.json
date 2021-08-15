@@ -1,6 +1,6 @@
 {
   "name": "@rwth-acis/las2peer-project-service-frontend",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "description": "Frontend for las2peer project service.",
   "main": "project-list.js",
   "module": "project-list.js",
@@ -8,6 +8,10 @@
   "scripts": {
     "serve": "web-dev-server --node-resolve --watch --open",
     "build": "echo \"This is not a TypeScript project, so no need to build.\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rwth-acis/las2peer-project-service"
   },
   "author": {
     "name": "ACIS Group, RWTH Aachen",
@@ -24,12 +28,12 @@
     "@polymer/paper-listbox": "^3.0.1",
     "@polymer/paper-spinner": "^3.0.2",
     "@polymer/paper-tabs": "^3.1.0",
-    "las2peer-frontend-statusbar": "github:rwth-acis/las2peer-frontend-statusbar#fixUserGroups",
-    "las2peer-frontend-user-widget": "github:rwth-acis/las2peer-frontend-user-widget#fixUserGroups",
+    "las2peer-frontend-statusbar": "github:rwth-acis/las2peer-frontend-statusbar#0.3.1",
+    "las2peer-frontend-user-widget": "github:rwth-acis/las2peer-frontend-user-widget#0.3.0",
     "lit-element": "^2.4.0",
     "y-map": "^10.1.3",
     "y-memory": "^8.0.9",
-    "y-websockets-client": "^8.0.16",
+    "y-websockets-client": "rwth-acis/y-websockets-client#v8",
     "yjs": "^12.3.3"
   },
   "devDependencies": {

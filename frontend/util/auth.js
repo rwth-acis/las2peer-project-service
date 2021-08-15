@@ -28,12 +28,20 @@ export default class Auth {
    * Also adds a "fake" basic auth since las2peer seems to need a password.
    */
   static getAuthHeaderWithSub() {
-    console.log(localStorage.getItem(this.KEY_USER_INFO));
     var userInfo = JSON.parse(localStorage.getItem(this.KEY_USER_INFO));
     return {
       "access-token": localStorage.getItem(this.KEY_ACCESS_TOKEN),
       "Authorization": "Basic "+ btoa(userInfo.preferred_username + ":" + userInfo.sub)
     }
+  }
+
+  static userInfoAvailable() {
+    return localStorage.getItem(this.KEY_USER_INFO) !== null;
+  }
+
+  static getBasicAuthPart() {
+    var userInfo = JSON.parse(localStorage.getItem(this.KEY_USER_INFO));
+    return btoa(userInfo.preferred_username + ":" + userInfo.sub);
   }
   
 
