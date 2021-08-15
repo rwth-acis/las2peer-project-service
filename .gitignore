@@ -2,7 +2,6 @@
 /project_service/export/
 /node-storage/
 /node_modules
-/bin
 /.las2peer/
 /tmp/
 /log/

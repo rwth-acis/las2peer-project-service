@@ -1,0 +1,1 @@
+java -cp "lib/*" i5.las2peer.tools.GroupAgentGenerator "$@"
