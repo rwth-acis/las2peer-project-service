@@ -90,3 +90,7 @@ bin/start_network.sh
 After successful start, Project Service is available under
 
 [http://localhost:8080/projects/](http://localhost:8080/projects/)
+
+Setup with docker
+------------------
+To run the service for development purposes using docker, please refer to the [wiki](https://github.com/rwth-acis/las2peer-project-service/wiki/Local-development-instance-setup).
