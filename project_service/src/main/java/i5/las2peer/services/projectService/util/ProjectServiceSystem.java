@@ -15,6 +15,7 @@ public class ProjectServiceSystem {
 	
 	private static final String JSON_KEY_VISIBILITY_OF_PROJECTS = "visibilityOfProjects";
 	private static final String JSON_KEY_EVENT_LISTENER_SERVICE = "eventListenerService";
+	private static final String JSON_KEY_GITHUB_PROJECTS_ENABLED = "gitHubProjectsEnabled";
 
 	/**
 	 * Name of the system. Example: SBF
@@ -33,6 +34,12 @@ public class ProjectServiceSystem {
 	 */
 	private String eventListenerService;
 	
+	/**
+	 * Whether the connection of las2peer projects within this system to GitHub 
+	 * projects should be enabled.
+	 */
+	private boolean gitHubProjectsEnabled = false;
+	
 	public ProjectServiceSystem(String systemName, JSONObject systemJSON) {
 		this.name = systemName;
 		
@@ -46,6 +53,10 @@ public class ProjectServiceSystem {
 		} else {
 			// use default value
 			this.visibilityOfProjects = ProjectService.visibilityOfProjectsDefault;
+		}
+		
+		if (systemJSON.containsKey(JSON_KEY_GITHUB_PROJECTS_ENABLED)) {
+			this.gitHubProjectsEnabled = (boolean) systemJSON.get(JSON_KEY_GITHUB_PROJECTS_ENABLED);
 		}
 		
 		this.eventListenerService = (String) systemJSON.getOrDefault(JSON_KEY_EVENT_LISTENER_SERVICE, null);
@@ -66,5 +77,9 @@ public class ProjectServiceSystem {
 	
 	public boolean hasEventListenerService() {
 		return this.eventListenerService != null;
+	}
+	
+	public boolean gitHubProjectsEnabled() {
+		return this.gitHubProjectsEnabled;
 	}
 }
