@@ -397,7 +397,7 @@ public class ProjectService extends RESTService {
 	 * @param system This prefix is used to store all the envelopes of a system. It should be
 	 *        unique for every system using the project service.
 	 * @param projectName Name of the project to load.
-	 * @return
+	 * @return JSON information on the requested project.
 	 */
 	@GET
 	@Path("/{system}/{projectName}")
