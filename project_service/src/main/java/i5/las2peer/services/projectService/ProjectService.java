@@ -2,7 +2,6 @@ package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.ws.rs.GET;
@@ -48,6 +47,8 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 
 import i5.las2peer.services.projectService.project.Project;
+import i5.las2peer.services.projectService.util.ProjectVisibility;
+import i5.las2peer.services.projectService.util.SystemsConfig;
 
 /**
  * las2peer-project-service
@@ -66,7 +67,7 @@ public class ProjectService extends RESTService {
 	 * If a system does not specify the "visibilityOfProjects" attribute, then this 
 	 * default value is used.
 	 */
-	private static final String visibilityOfProjectsDefault = "own";
+	public static final ProjectVisibility visibilityOfProjectsDefault = ProjectVisibility.OWN;
 
 	// service that should be called on specific events such as project creation
 	private EventManager eventManager;
@@ -76,7 +77,7 @@ public class ProjectService extends RESTService {
 	private String oldServiceAgentPw;
 	
 	private String systems;
-	private JSONObject systemsJSON;
+	private SystemsConfig systemsConfig = null;
 
 	@Override
 	protected void initResources() {
@@ -97,12 +98,13 @@ public class ProjectService extends RESTService {
 			throw new ServiceException("Property 'systems' is not set!");
 		
 		try {
-			systemsJSON = (JSONObject) JSONValue.parseWithException(this.systems);
+			JSONObject systemsJSON = (JSONObject) JSONValue.parseWithException(this.systems);
+			systemsConfig = new SystemsConfig(systemsJSON);
 		} catch (ParseException e) {
 			throw new ServiceException("Property 'systems' is not well-formatted!");
 		}
 		
-		this.eventManager = new EventManager(this.getSystemEventListenerServiceMap());
+		this.eventManager = new EventManager(systemsConfig.getSystemEventListenerServiceMap());
 	}
 
 	public GroupAgent getServiceGroupAgent() {
@@ -206,7 +208,7 @@ public class ProjectService extends RESTService {
 	public Response postProject(@PathParam("system") String system, String inputProject) {
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "postProject: trying to store a new project");
 		
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
@@ -329,7 +331,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response getProjects(@PathParam("system") String system) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Agent agent = Context.getCurrent().getMainAgent();
@@ -368,7 +370,7 @@ public class ProjectService extends RESTService {
 					// user is not allowed to access group agent => user is no project/group member
 					// only return this project if the service is configured that all projects are
 					// readable by any user
-					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
+					if (this.systemsConfig.getVisibilityOfProjectsBySystem(system) == ProjectVisibility.ALL) {
 						projectJSON.put("is_member", false);
 						projectsJSON.add(projectJSON);
 					}
@@ -406,7 +408,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find project with given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response getProjectByName(@PathParam("system") String system, @PathParam("projectName") String projectName) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		GroupAgent serviceGroupAgent = getServiceGroupAgent();
@@ -435,7 +437,7 @@ public class ProjectService extends RESTService {
 					// user is not allowed to access group agent => user is no project/group member
 					// only return this project if the service is configured that all projects are
 					// readable by any user
-					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
+					if (this.systemsConfig.getVisibilityOfProjectsBySystem(system) == ProjectVisibility.ALL) {
 						projectJSON.put("is_member", false);
 						return Response.status(HttpURLConnection.HTTP_OK).entity(projectJSON.toJSONString()).build();
 					} else {
@@ -467,7 +469,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find a project with the given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response deleteProject(@PathParam("system") String system, @PathParam("projectName") String projectName) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Agent agent = Context.getCurrent().getMainAgent();
@@ -549,7 +551,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response changeGroup(@PathParam("system") String system, String body) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
@@ -651,7 +653,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response changeMetadata(@PathParam("system") String system, String body) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
@@ -751,39 +753,5 @@ public class ProjectService extends RESTService {
 	 */
 	public static String getProjectListIdentifier(String system) {
 		return system + "_" + projects_prefix;
-	}
-	
-	/**
-	 * Checks if the given system name is valid, i.e. if it is part of the systems JSON given as a system property.
-	 * @param system Name of the system.
-	 * @return Whether the given system name is valid.
-	 */
-	private boolean isValidSystemName(String system) {
-		return this.systemsJSON.containsKey(system);
-	}
-	
-	/**
-	 * Returns the value of the "visibilityOfProjects" attribute of the given system.
-	 * @param system Name of the system.
-	 * @return Value of "visibilityOfProjects" attribute set for this system.
-	 */
-	private String getVisibilityOfProjectsBySystem(String system) {
-		JSONObject systemJSON = (JSONObject) this.systemsJSON.get(system);
-		String visibility = (String) systemJSON.getOrDefault("visibilityOfProjects", visibilityOfProjectsDefault);
-		return visibility;
-	}
-	
-	/**
-	 * Returns a map consisting for every system (key) the corresponding event listener service name (as value).
-	 * If the event listener service was not set in the properties file, then it is null.
-	 * @return
-	 */
-	private HashMap<String, String> getSystemEventListenerServiceMap() {
-		HashMap<String, String> map = new HashMap<>();
-		for(Object system : this.systemsJSON.keySet()) {
-			String eventListenerService = (String)((JSONObject) systemsJSON.get(system)).getOrDefault("eventListenerService", null);
-			map.put((String) system, eventListenerService);
-		}
-		return map;
 	}
 }
