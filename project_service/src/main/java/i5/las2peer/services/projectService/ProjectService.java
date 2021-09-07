@@ -49,6 +49,7 @@ import javax.ws.rs.DELETE;
 import i5.las2peer.services.projectService.project.Project;
 import i5.las2peer.services.projectService.util.ProjectVisibility;
 import i5.las2peer.services.projectService.util.SystemsConfig;
+import i5.las2peer.services.projectService.util.github.GitHubHelper;
 
 /**
  * las2peer-project-service
@@ -103,6 +104,10 @@ public class ProjectService extends RESTService {
 		} catch (ParseException e) {
 			throw new ServiceException("Property 'systems' is not well-formatted!");
 		}
+		
+		// setup GitHubHelper
+		GitHubHelper gitHubHelper = GitHubHelper.getInstance();
+		gitHubHelper.setSystemsConfig(systemsConfig);
 		
 		this.eventManager = new EventManager(systemsConfig.getSystemEventListenerServiceMap());
 	}

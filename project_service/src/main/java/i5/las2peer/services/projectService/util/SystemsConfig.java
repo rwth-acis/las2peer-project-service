@@ -55,4 +55,28 @@ public class SystemsConfig {
 		}
 		return ProjectService.visibilityOfProjectsDefault;
 	}
+	
+	/**
+	 * Returns the name of the GitHub organization that is connected to the system.
+	 * @param systemName System to search GitHub organization for.
+	 * @return Name of the GitHub organization that is connected to the system.
+	 */
+	public String getGitHubOrganizationBySystem(String systemName) {
+		for(ProjectServiceSystem system : this.systems) {
+			if(system.getName().equals(systemName)) return system.getGitHubOrganization();
+		}
+		return null;
+	}
+	
+	/**
+	 * Returns the personal access token for GitHub related to the system.
+	 * @param systemName System to search GitHub personal access token for.
+	 * @return Personal access token for GitHub related to the system.
+	 */
+	public String getGitHubPATBySystem(String systemName) {
+		for(ProjectServiceSystem system : this.systems) {
+			if(system.getName().equals(systemName)) return system.getGitHubPersonalAccessToken();
+		}
+		return null;
+	}
 }

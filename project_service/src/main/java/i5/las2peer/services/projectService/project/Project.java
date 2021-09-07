@@ -9,6 +9,7 @@ import org.json.simple.parser.ParseException;
 
 import i5.las2peer.api.Context;
 import i5.las2peer.api.security.Agent;
+import i5.las2peer.services.projectService.util.github.GitHubProject;
 
 /**
  * (Data-)Class for Projects. Provides means to convert JSON to Object and
@@ -42,6 +43,11 @@ public class Project implements Serializable {
 	 * might be system-specific.
 	 */
 	private String metadata;
+	
+	/**
+	 * Information on the connected GitHub project (if there is one connected).
+	 */
+	private GitHubProject connectedGitHubProject;
 
 	/**
 	 * Creates a project object from the given JSON string. This constructor should

@@ -16,7 +16,9 @@ public class ProjectServiceSystem {
 	private static final String JSON_KEY_VISIBILITY_OF_PROJECTS = "visibilityOfProjects";
 	private static final String JSON_KEY_EVENT_LISTENER_SERVICE = "eventListenerService";
 	private static final String JSON_KEY_GITHUB_PROJECTS_ENABLED = "gitHubProjectsEnabled";
-
+    private static final String JSON_KEY_GITHUB_ORGANIZATION = "gitHubOrganization";
+    private static final String JSON_KEY_GITHUB_PERSONAL_ACCESS_TOKEN = "gitHubPersonalAccessToken";
+	
 	/**
 	 * Name of the system. Example: SBF
 	 */
@@ -40,6 +42,18 @@ public class ProjectServiceSystem {
 	 */
 	private boolean gitHubProjectsEnabled = false;
 	
+	/**
+	 * Name of the GitHub organization where GitHub projects (corresponding 
+	 * to projects of this system) should be stored. 
+	 */
+	private String gitHubOrganization;
+	
+	/**
+	 * Personal access token from GitHub that allows to use the API
+	 * to create new GitHub projects in the used GitHub organization.
+	 */
+	private String gitHubPersonalAccessToken;
+	
 	public ProjectServiceSystem(String systemName, JSONObject systemJSON) {
 		this.name = systemName;
 		
@@ -57,6 +71,8 @@ public class ProjectServiceSystem {
 		
 		if (systemJSON.containsKey(JSON_KEY_GITHUB_PROJECTS_ENABLED)) {
 			this.gitHubProjectsEnabled = (boolean) systemJSON.get(JSON_KEY_GITHUB_PROJECTS_ENABLED);
+			this.gitHubOrganization = (String) systemJSON.get(JSON_KEY_GITHUB_ORGANIZATION);
+			this.gitHubPersonalAccessToken = (String) systemJSON.get(JSON_KEY_GITHUB_PERSONAL_ACCESS_TOKEN);
 		}
 		
 		this.eventListenerService = (String) systemJSON.getOrDefault(JSON_KEY_EVENT_LISTENER_SERVICE, null);
@@ -81,5 +97,13 @@ public class ProjectServiceSystem {
 	
 	public boolean gitHubProjectsEnabled() {
 		return this.gitHubProjectsEnabled;
+	}
+	
+	public String getGitHubOrganization() {
+		return this.gitHubOrganization;
+	}
+	
+	public String getGitHubPersonalAccessToken() {
+		return this.gitHubPersonalAccessToken;
 	}
 }
