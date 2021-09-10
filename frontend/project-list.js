@@ -331,7 +331,15 @@ export class ProjectList extends LitElement {
                 <div style="margin-left: auto; display: flex">
                 ${this.getListOfProjectOnlineUsers(project.name) ? html`<span class="green-dot" style="margin-top: auto; margin-bottom: auto"></span>` : html``}
                   <p class="project-item-user-list">${this.getListOfProjectOnlineUsers(project.name)}</p>
-                  <slot name="project-${project.id}"></slot>
+                  <!-- Link to GitHub -->
+                  ${project.gitHubProject ? html `
+                    <a title="View project on GitHub" href=${project.gitHubProject.url} target="_blank"
+                       style="margin-top: 0.3em; margin-right: 0.5em">
+                      <svg width="24px" height="24px">
+                        <image xlink:href="https://raw.githubusercontent.com/primer/octicons/e9a9a84fb796d70c0803ab8d62eda5c03415e015/icons/mark-github-16.svg" width="24px" height="24px"/>
+                      </svg>
+                    </a>
+                  ` : html``}
                   ${project.is_member ? html `
                     <iron-icon icon="icons:more-vert" class="icon" style="margin-top: auto; margin-bottom: auto; margin-right: 1em"
                       @click=${() => this.openProjectOptionsDialog(project)}></iron-icon>
