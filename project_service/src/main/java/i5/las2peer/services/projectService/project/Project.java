@@ -153,6 +153,17 @@ public class Project implements Serializable {
 	public void createGitHubProject(String systemName) throws GitHubException {
 		this.connectedGitHubProject = GitHubHelper.getInstance().createPublicGitHubProject(systemName, this.getName());
 	}
+	
+	/**
+	 * Uses the GitHubHelper to delete the corresponding GitHub project (if there exists one).
+	 * @param systemName Name of the system (used to find correct GitHub organization for GitHub project).
+	 * @throws GitHubException If the GitHub project deletion failed.
+	 */
+	public void deleteGitHubProject(String systemName) throws GitHubException {
+		if(this.gitHubProjectConnected()) {
+			GitHubHelper.getInstance().deleteGitHubProject(systemName, this.connectedGitHubProject);
+		}
+	}
 
 	/**
 	 * Getter for the name of the project.

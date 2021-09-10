@@ -503,6 +503,9 @@ public class ProjectService extends RESTService {
 			
 			// also update project list and remove the project there
 			this.removeProjectFromProjectListEnvelope(system, projectName, serviceGroupAgent);
+			
+			// delete corresponding GitHub project (if there exists one)
+			deletedProject.deleteGitHubProject(system);
 		} catch (EnvelopeAccessDeniedException e) {
 			return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
 					.entity("Agent is no project member and not allowed to delete it.").build();
@@ -511,6 +514,9 @@ public class ProjectService extends RESTService {
 					.entity("Could not find a project with the given name.").build();
 		} catch (EnvelopeOperationFailedException e) {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		} catch (GitHubException e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+					.entity("Deletion of corresponding GitHub project failed.").build();
 		}
 		
 		if (this.eventManager.sendProjectDeletedEvent(Context.get(), system, deletedProject.toJSONObject())) {
