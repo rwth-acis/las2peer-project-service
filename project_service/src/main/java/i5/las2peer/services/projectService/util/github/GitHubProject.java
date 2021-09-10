@@ -1,12 +1,16 @@
 package i5.las2peer.services.projectService.util.github;
 
+import java.io.Serializable;
+
+import org.json.simple.JSONObject;
+
 /**
  * Contains the information about a GitHub project which is connected 
  * to a las2peer project.
  * @author Philipp
  *
  */
-public class GitHubProject {
+public class GitHubProject implements Serializable {
 
 	/**
 	 * The id of the GitHub project.
@@ -29,5 +33,13 @@ public class GitHubProject {
 	
 	public String getUrl() {
 		return this.url;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public JSONObject toJSONObject() {
+		JSONObject json = new JSONObject();
+		json.put("id", this.id);
+		json.put("url", this.url);
+		return json;
 	}
 }

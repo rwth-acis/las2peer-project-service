@@ -57,6 +57,18 @@ public class SystemsConfig {
 	}
 	
 	/**
+	 * Whether the GitHub projects connection is enabled for the system with the given name.
+	 * @param systemName Name of the system.
+	 * @return Whether the GitHub projects connection is enabled for the system with the given name.
+	 */
+	public boolean gitHubProjectsEnabled(String systemName) {
+		for(ProjectServiceSystem system : this.systems) {
+			if(system.getName().equals(systemName)) return system.gitHubProjectsEnabled();
+		}
+		return false;
+	}
+	
+	/**
 	 * Returns the name of the GitHub organization that is connected to the system.
 	 * @param systemName System to search GitHub organization for.
 	 * @return Name of the GitHub organization that is connected to the system.

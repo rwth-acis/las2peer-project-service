@@ -49,6 +49,7 @@ import javax.ws.rs.DELETE;
 import i5.las2peer.services.projectService.project.Project;
 import i5.las2peer.services.projectService.util.ProjectVisibility;
 import i5.las2peer.services.projectService.util.SystemsConfig;
+import i5.las2peer.services.projectService.util.github.GitHubException;
 import i5.las2peer.services.projectService.util.github.GitHubHelper;
 
 /**
@@ -235,6 +236,17 @@ public class ProjectService extends RESTService {
 				// JSON project given with the request is not well formatted or some attributes
 				// are missing
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
+			}
+			
+			// check if GitHub project should be created for this las2peer project
+			if(this.systemsConfig.gitHubProjectsEnabled(system)) {
+				// create corresponding GitHub project
+				try {
+					project.createGitHubProject(system);
+				} catch (GitHubException e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+							.entity("Creation of GitHub project failed.").build();
+				}
 			}
 
 			String identifier = getProjectIdentifier(system, project.getName());
