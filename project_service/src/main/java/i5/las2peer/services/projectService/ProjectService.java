@@ -237,17 +237,6 @@ public class ProjectService extends RESTService {
 				// are missing
 				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 			}
-			
-			// check if GitHub project should be created for this las2peer project
-			if(this.systemsConfig.gitHubProjectsEnabled(system)) {
-				// create corresponding GitHub project
-				try {
-					project.createGitHubProject(system);
-				} catch (GitHubException e) {
-					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
-							.entity("Creation of GitHub project failed.").build();
-				}
-			}
 
 			String identifier = getProjectIdentifier(system, project.getName());
 			String identifier2 = getProjectListIdentifier(system);
@@ -279,6 +268,17 @@ public class ProjectService extends RESTService {
 						.entity("The group linked to the given project cannot be found.").build();
 			} catch (AgentOperationFailedException e) {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+			
+			// check if GitHub project should be created for this las2peer project
+			if(this.systemsConfig.gitHubProjectsEnabled(system)) {
+				// create corresponding GitHub project
+				try {
+					project.createGitHubProject(system);
+				} catch (GitHubException e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+							.entity("Creation of GitHub project failed.").build();
+				}
 			}
 
 			ProjectContainer cc = new ProjectContainer();
