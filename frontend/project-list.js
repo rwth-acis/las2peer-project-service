@@ -13,6 +13,7 @@ import '@polymer/iron-icons/social-icons.js';
 import OnlineUserListHelper from './util/online-user-list-helper'
 
 import Auth from './util/auth';
+import GitHub from "./util/github";
 
 
 /**
@@ -228,6 +229,20 @@ export class ProjectList extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+
+    if(!GitHub.gitHubUsernameStored()) {
+      GitHub.hasUserGitHubAccountConnected().then(result => {
+        const connected = result[0];
+        if(connected) {
+          const username = result[1];
+          // store in localStorage
+          GitHub.storeGitHubUsername(username);
+          GitHub.sendGitHubUsernameToProjectService(this.projectServiceURL, this.system);
+        }
+      });
+    } else {
+      GitHub.sendGitHubUsernameToProjectService(this.projectServiceURL, this.system);
+    }
 
     // here the properties are already set (otherwise this.system is undefinied in showProjects)
     this.showProjects(false);
@@ -712,16 +727,20 @@ export class ProjectList extends LitElement {
       }).then(data => {
         console.log(data);
         const users = Object.values(data);
+        const body = {
+          "name": projectName,
+          "access_token": Auth.getAccessToken(),
+          "linkedGroup": linkedGroup,
+          "users": users
+        };
+        if(GitHub.gitHubUsernameStored()) {
+          body.gitHubUsername = GitHub.getGitHubUsername();
+        }
         //const newProject = {"id":this.projects.length, "name":projectName, "Linked Group":linkedGroup, "Group Members":users};
           fetch(this.projectServiceURL + "/projects/" + this.system, {
           method: "POST",
           headers:  Auth.getAuthHeaderWithSub(),
-          body: JSON.stringify({
-            "name": projectName,
-            "access_token": Auth.getAccessToken(),
-            "linkedGroup": linkedGroup,
-            "users": users
-          })
+          body: JSON.stringify(body)
         }).then(response => {
           console.log(response);
           // close loading dialog
