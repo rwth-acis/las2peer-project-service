@@ -229,9 +229,14 @@ public class ProjectService extends RESTService {
 			Envelope env = null;
 			Envelope env2 = null;
 			Project project;
+			String creatorGitHubUsername = null;
 
 			try {
 				project = new Project(agent, inputProject);
+				JSONObject bodyJSON = (JSONObject) JSONValue.parseWithException(inputProject);
+				if(bodyJSON.containsKey("gitHubUsername")) {
+					creatorGitHubUsername = (String) bodyJSON.get("gitHubUsername");
+				}
 			} catch (ParseException e) {
 				// JSON project given with the request is not well formatted or some attributes
 				// are missing
@@ -313,6 +318,16 @@ public class ProjectService extends RESTService {
 			} catch (EnvelopeOperationFailedException | EnvelopeAccessDeniedException e1) {
 				System.out.println(e1);
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+			
+			if(this.systemsConfig.gitHubProjectsEnabled(system) && creatorGitHubUsername != null) {
+				// project creator has sent a GitHub username
+				// grant access to corresponding GitHub project
+				try {
+					this.updateUserGitHubProjectsAccess(system, serviceGroupAgent, agent, creatorGitHubUsername);
+				} catch (Exception e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+				}
 			}
 
 			if (this.eventManager.sendProjectCreatedEvent(Context.get(), system, project.toJSONObject())) {
@@ -755,6 +770,131 @@ public class ProjectService extends RESTService {
 			// are missing
 			return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity(e.getMessage()).build();
 		}
+	}
+	
+	/**
+	 * This method is used to notify the project-service about the GitHub username of a user.
+	 * It checks every project where the user is a member of and grants the user access 
+	 * to the corresponding GitHub projects (if it is not already given).
+	 * @param system Name of the system
+	 * @param body JSON body that should contain the GitHub username.
+	 * @return Response containing the status code.
+	 */
+	@POST
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Path("/{system}/user/githubinfo")
+	public Response updateUserGitHubInfo(@PathParam("system") String system, String body) {
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
+		if(!this.systemsConfig.gitHubProjectsEnabled(system)) return Response.status(HttpURLConnection.HTTP_OK).build();
+		
+		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
+			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
+		};
+		
+		GroupAgent serviceGroupAgent = getServiceGroupAgent();
+		if (serviceGroupAgent == null)
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
+					.build();
+		
+		Agent agent = Context.getCurrent().getMainAgent();
+		
+		JSONObject jsonBody;
+		String gitHubUsername = null;
+		try {
+			jsonBody = (JSONObject) JSONValue.parseWithException(body);
+			if(jsonBody.containsKey("gitHubUsername")) {
+			    gitHubUsername = (String) jsonBody.get("gitHubUsername");
+			} else {
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("GitHub username is missing in body.").build();	
+			}
+		} catch (ParseException e) {
+		    return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("Cannot parse JSON body.").build();
+		}
+		
+		try {
+			this.updateUserGitHubProjectsAccess(system, serviceGroupAgent, agent, gitHubUsername);
+		} catch (GitHubException e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+					.entity("Communication with GitHub API failed.").build();
+		} catch (Exception e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		}
+		
+		return Response.status(HttpURLConnection.HTTP_OK).build();
+	}
+	
+	/**
+	 * Grants user access to all relevant GitHub projects (i.e., projects where the user 
+	 * is a member of) in the given system.
+	 * @param system System
+	 * @param serviceGroupAgent Group agent of the service used to access the project list envelope.
+	 * @param userAgent Agent of the user
+	 * @param gitHubUsername GitHub username of the user
+	 * @throws EnvelopeAccessDeniedException Project list envelope or project envelope could not be accessed.
+	 * @throws EnvelopeNotFoundException Project list envelope or project envelope not found.
+	 * @throws EnvelopeOperationFailedException Updating one of the envelopes failed.
+	 * @throws GitHubException Problem with communication with GitHub API.
+	 */
+	private void updateUserGitHubProjectsAccess(String system, GroupAgent serviceGroupAgent, Agent userAgent, String gitHubUsername)
+			throws EnvelopeAccessDeniedException, EnvelopeNotFoundException, EnvelopeOperationFailedException, GitHubException {
+		Envelope stored = null;
+		stored = Context.get().requestEnvelope(getProjectListIdentifier(system), serviceGroupAgent);
+	    ProjectContainer cc = (ProjectContainer) stored.getContent();
+		
+		// load all projects where the user is a member of
+		List<Project> userProjects = this.getProjectsOfUser(system, serviceGroupAgent, userAgent);
+		for(Project project : userProjects) {
+			if(!project.hasUserGitHubNameStored(userAgent)) {
+				// store the GitHub username of this user
+				project.addGitHubUsername(userAgent, gitHubUsername);
+				
+				// need to update project in envelope
+				cc.removeProject(project);
+				cc.addProject(project);
+				stored.setContent(cc);
+				Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+				
+				// since we now know the GitHub username, we can add the user to the GitHub project
+				GitHubHelper.getInstance().grantUserAccessToProject(system, gitHubUsername, project.getConnectedGitHubProject());
+			}
+		}
+	}
+	
+	/**
+	 * Returns the list of projects where the user is a member of.
+	 * @param system Name of the system, where projects of the user should be searched.
+	 * @param serviceGroupAgent Agent to access project list envelope.
+	 * @param userAgent User agent to check if user has access to a project.
+	 * @return List of projects where the user is a member of.
+	 */
+	private List<Project> getProjectsOfUser(String system, GroupAgent serviceGroupAgent, Agent userAgent) {
+		ArrayList<Project> userProjects = new ArrayList<>();
+		
+		String identifier = getProjectListIdentifier(system);
+		
+		try {
+		    Envelope stored = Context.get().requestEnvelope(identifier, serviceGroupAgent);
+		    ProjectContainer cc = (ProjectContainer) stored.getContent();
+		    // read all projects from the project list
+		    List<Project> projects = cc.getAllProjects();
+
+		    for (Project project : projects) {
+			    // To check whether the user is a member of the project/group, we need the group
+			    // identifier
+			    String groupId = project.getGroupIdentifier();
+			    try {
+				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, userAgent);
+				    // user is allowed to access group agent => user is a project/group member
+				    userProjects.add(project);
+			    } catch (AgentAccessDeniedException e) {
+				    // user is not allowed to access group agent => user is no project/group member
+			    }
+		    }
+		} catch (Exception e) {}
+		
+		return userProjects;
 	}
 	
 	/**

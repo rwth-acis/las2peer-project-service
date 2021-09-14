@@ -1,6 +1,7 @@
 package i5.las2peer.services.projectService.project;
 
 import java.io.Serializable;
+import java.util.HashMap;
 
 import org.json.simple.JSONValue;
 import org.json.simple.JSONObject;
@@ -48,6 +49,12 @@ public class Project implements Serializable {
 	 * Information on the connected GitHub project (if there is one connected).
 	 */
 	private GitHubProject connectedGitHubProject = null;
+	
+	/**
+	 * Maps user agent identifiers to their GitHub username.
+	 * If the GitHub projects connection is disabled, this map might not be defined.
+	 */
+	private HashMap<String, String> memberGitHubUsernames;
 
 	/**
 	 * Creates a project object from the given JSON string. This constructor should
@@ -88,6 +95,8 @@ public class Project implements Serializable {
 			JSONObject empty = new JSONObject();
 			this.metadata = empty.toJSONString();
 		}
+		
+		this.memberGitHubUsernames = new HashMap<>();
 	}
 
 	/**
@@ -216,5 +225,27 @@ public class Project implements Serializable {
 	 */
 	public boolean gitHubProjectConnected() {
 		return this.connectedGitHubProject != null;
+	}
+	
+	public GitHubProject getConnectedGitHubProject() {
+		return this.connectedGitHubProject;
+	}
+	
+	/**
+	 * Checks if the GitHub username of the given user is already stored inside this project.
+	 * @param userAgent Agent of the user.
+	 * @return Whether the GitHub username of the given user is already stored inside this project.
+	 */
+	public boolean hasUserGitHubNameStored(Agent userAgent) {
+		return this.memberGitHubUsernames.containsKey(userAgent.getIdentifier());
+	}
+	
+	/**
+	 * Stores the GitHub username of the user in the memberGitHubUsernames HashMap.
+	 * @param userAgent Agent of the user.
+	 * @param gitHubUsername GitHub username of the user.
+	 */
+	public void addGitHubUsername(Agent userAgent, String gitHubUsername) {
+		this.memberGitHubUsernames.put(userAgent.getIdentifier(), gitHubUsername);
 	}
 }
