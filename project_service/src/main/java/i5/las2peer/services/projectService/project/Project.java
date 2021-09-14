@@ -1,7 +1,9 @@
 package i5.las2peer.services.projectService.project;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.json.simple.JSONValue;
 import org.json.simple.JSONObject;
@@ -247,5 +249,41 @@ public class Project implements Serializable {
 	 */
 	public void addGitHubUsername(Agent userAgent, String gitHubUsername) {
 		this.memberGitHubUsernames.put(userAgent.getIdentifier(), gitHubUsername);
+	}
+	
+	/**
+	 * Checks if a user that is no group member anymore still has access to the GitHub project.
+	 * In this case, access will be removed.
+	 * @param system Name of the system.
+	 * @param groupMemberIds Array containing the agent ids of the current group members.
+	 * @return True if a group member was removed from access, false otherwise.
+	 * @throws GitHubException If something with the communication with GitHub went wrong.
+	 */
+	public boolean removeNonGroupMembersGitHubAccess(String system, String[] groupMemberIds) throws GitHubException {
+		boolean changed = false;
+		List<String> ghProjectMemberUserIds = new ArrayList<>();
+		for(String userId : this.memberGitHubUsernames.keySet()) {
+			ghProjectMemberUserIds.add(userId);
+		}
+		
+		for(String userId : ghProjectMemberUserIds) {
+			// check if the user is still a member of the group
+			boolean stillMember = false;
+			for(String groupMemberId : groupMemberIds) {
+				if(groupMemberId.equals(userId)) {
+					stillMember = true;
+					break;
+				}
+			}
+			if(!stillMember) {
+				// user left the group
+				// remove access to GitHub project
+				String username = this.memberGitHubUsernames.get(userId);
+				this.memberGitHubUsernames.remove(userId);
+				GitHubHelper.getInstance().removeUserAccessToProject(system, username, this.connectedGitHubProject);
+				changed = true;
+			}
+		}
+		return changed;
 	}
 }

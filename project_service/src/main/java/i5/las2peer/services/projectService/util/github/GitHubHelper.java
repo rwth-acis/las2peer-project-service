@@ -116,6 +116,44 @@ public class GitHubHelper {
 	}
 	
 	/**
+	 * Removes users access to GitHub project. 
+	 * @param systemName Name of the system, that the GitHub project belongs to.
+	 * @param ghUsername Username of the GitHub user who should be removed from project.
+	 * @param ghProject GitHubProject object
+	 * @throws GitHubException If something with the API request went wrong
+	 */
+	public void removeUserAccessToProject(String systemName, String ghUsername, GitHubProject ghProject) throws GitHubException {
+		if(ghUsername == null) return;
+		
+		String authStringEnc = getAuthStringEnc(systemName);
+		
+		URL url;
+		try {
+			url = new URL(API_BASE_URL + "/projects/" + ghProject.getId() + "/collaborators/" + ghUsername);
+
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("DELETE");
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+			connection.setUseCaches(false);
+			connection.setRequestProperty("Accept", "application/vnd.github.inertia-preview+json");
+			connection.setRequestProperty("Authorization", "Basic " + authStringEnc);
+			
+			// forward (in case of) error
+			if (connection.getResponseCode() != 204) {
+				String message = getErrorMessage(connection);
+				throw new GitHubException(message);
+			}
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+			throw new GitHubException(e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new GitHubException(e.getMessage());
+		}
+	}
+	
+	/**
 	 * Deletes the given GitHub project.
 	 * @param systemName Name of the system, to which the GitHub project belongs to.
 	 * @param ghProject GitHub project which should be deleted.

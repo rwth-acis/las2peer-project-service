@@ -828,6 +828,8 @@ public class ProjectService extends RESTService {
 	/**
 	 * Grants user access to all relevant GitHub projects (i.e., projects where the user 
 	 * is a member of) in the given system.
+	 * Also checks if someone who still has access to the GitHub project is no group
+	 * member anymore. In this case, access to GitHub project will be removed.
 	 * @param system System
 	 * @param serviceGroupAgent Group agent of the service used to access the project list envelope.
 	 * @param userAgent Agent of the user
@@ -858,6 +860,22 @@ public class ProjectService extends RESTService {
 				
 				// since we now know the GitHub username, we can add the user to the GitHub project
 				GitHubHelper.getInstance().grantUserAccessToProject(system, gitHubUsername, project.getConnectedGitHubProject());
+			}
+			// check for other users, if someone left the group and still has access to GitHub project
+			String groupId = project.getGroupIdentifier();
+			try {
+				GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, userAgent);
+				boolean removedUser = project.removeNonGroupMembersGitHubAccess(system, ga.getMemberList());
+				if(removedUser) {
+					// need to update project in envelope
+					cc.removeProject(project);
+					cc.addProject(project);
+					stored.setContent(cc);
+					Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
