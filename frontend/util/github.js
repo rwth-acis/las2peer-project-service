@@ -1,4 +1,4 @@
-import Auth from "./auth";
+import Auth from "./auth.js";
 
 /**
  * Helper class for GitHub projects connection.
