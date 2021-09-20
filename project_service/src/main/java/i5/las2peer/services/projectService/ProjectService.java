@@ -2,7 +2,6 @@ package i5.las2peer.services.projectService;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.ws.rs.GET;
@@ -48,6 +47,10 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 
 import i5.las2peer.services.projectService.project.Project;
+import i5.las2peer.services.projectService.util.ProjectVisibility;
+import i5.las2peer.services.projectService.util.SystemsConfig;
+import i5.las2peer.services.projectService.util.github.GitHubException;
+import i5.las2peer.services.projectService.util.github.GitHubHelper;
 
 /**
  * las2peer-project-service
@@ -66,7 +69,7 @@ public class ProjectService extends RESTService {
 	 * If a system does not specify the "visibilityOfProjects" attribute, then this 
 	 * default value is used.
 	 */
-	private static final String visibilityOfProjectsDefault = "own";
+	public static final ProjectVisibility visibilityOfProjectsDefault = ProjectVisibility.OWN;
 
 	// service that should be called on specific events such as project creation
 	private EventManager eventManager;
@@ -76,7 +79,7 @@ public class ProjectService extends RESTService {
 	private String oldServiceAgentPw;
 	
 	private String systems;
-	private JSONObject systemsJSON;
+	private SystemsConfig systemsConfig = null;
 
 	@Override
 	protected void initResources() {
@@ -97,12 +100,17 @@ public class ProjectService extends RESTService {
 			throw new ServiceException("Property 'systems' is not set!");
 		
 		try {
-			systemsJSON = (JSONObject) JSONValue.parseWithException(this.systems);
+			JSONObject systemsJSON = (JSONObject) JSONValue.parseWithException(this.systems);
+			systemsConfig = new SystemsConfig(systemsJSON);
 		} catch (ParseException e) {
 			throw new ServiceException("Property 'systems' is not well-formatted!");
 		}
 		
-		this.eventManager = new EventManager(this.getSystemEventListenerServiceMap());
+		// setup GitHubHelper
+		GitHubHelper gitHubHelper = GitHubHelper.getInstance();
+		gitHubHelper.setSystemsConfig(systemsConfig);
+		
+		this.eventManager = new EventManager(systemsConfig.getSystemEventListenerServiceMap());
 	}
 
 	public GroupAgent getServiceGroupAgent() {
@@ -206,7 +214,7 @@ public class ProjectService extends RESTService {
 	public Response postProject(@PathParam("system") String system, String inputProject) {
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "postProject: trying to store a new project");
 		
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 
 		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
@@ -221,9 +229,14 @@ public class ProjectService extends RESTService {
 			Envelope env = null;
 			Envelope env2 = null;
 			Project project;
+			String creatorGitHubUsername = null;
 
 			try {
 				project = new Project(agent, inputProject);
+				JSONObject bodyJSON = (JSONObject) JSONValue.parseWithException(inputProject);
+				if(bodyJSON.containsKey("gitHubUsername")) {
+					creatorGitHubUsername = (String) bodyJSON.get("gitHubUsername");
+				}
 			} catch (ParseException e) {
 				// JSON project given with the request is not well formatted or some attributes
 				// are missing
@@ -261,6 +274,17 @@ public class ProjectService extends RESTService {
 			} catch (AgentOperationFailedException e) {
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
 			}
+			
+			// check if GitHub project should be created for this las2peer project
+			if(this.systemsConfig.gitHubProjectsEnabled(system)) {
+				// create corresponding GitHub project
+				try {
+					project.createGitHubProject(system);
+				} catch (GitHubException e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+							.entity("Creation of GitHub project failed.").build();
+				}
+			}
 
 			ProjectContainer cc = new ProjectContainer();
 
@@ -294,6 +318,16 @@ public class ProjectService extends RESTService {
 			} catch (EnvelopeOperationFailedException | EnvelopeAccessDeniedException e1) {
 				System.out.println(e1);
 				return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+			}
+			
+			if(this.systemsConfig.gitHubProjectsEnabled(system) && creatorGitHubUsername != null) {
+				// project creator has sent a GitHub username
+				// grant access to corresponding GitHub project
+				try {
+					this.updateUserGitHubProjectsAccess(system, serviceGroupAgent, agent, creatorGitHubUsername);
+				} catch (Exception e) {
+					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+				}
 			}
 
 			if (this.eventManager.sendProjectCreatedEvent(Context.get(), system, project.toJSONObject())) {
@@ -329,7 +363,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_UNAUTHORIZED, message = "User not authorized."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response getProjects(@PathParam("system") String system) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Agent agent = Context.getCurrent().getMainAgent();
@@ -368,7 +402,7 @@ public class ProjectService extends RESTService {
 					// user is not allowed to access group agent => user is no project/group member
 					// only return this project if the service is configured that all projects are
 					// readable by any user
-					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
+					if (this.systemsConfig.getVisibilityOfProjectsBySystem(system) == ProjectVisibility.ALL) {
 						projectJSON.put("is_member", false);
 						projectsJSON.add(projectJSON);
 					}
@@ -395,7 +429,7 @@ public class ProjectService extends RESTService {
 	 * @param system This prefix is used to store all the envelopes of a system. It should be
 	 *        unique for every system using the project service.
 	 * @param projectName Name of the project to load.
-	 * @return
+	 * @return JSON information on the requested project.
 	 */
 	@GET
 	@Path("/{system}/{projectName}")
@@ -406,7 +440,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find project with given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response getProjectByName(@PathParam("system") String system, @PathParam("projectName") String projectName) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		GroupAgent serviceGroupAgent = getServiceGroupAgent();
@@ -435,7 +469,7 @@ public class ProjectService extends RESTService {
 					// user is not allowed to access group agent => user is no project/group member
 					// only return this project if the service is configured that all projects are
 					// readable by any user
-					if (getVisibilityOfProjectsBySystem(system).equals("all")) {
+					if (this.systemsConfig.getVisibilityOfProjectsBySystem(system) == ProjectVisibility.ALL) {
 						projectJSON.put("is_member", false);
 						return Response.status(HttpURLConnection.HTTP_OK).entity(projectJSON.toJSONString()).build();
 					} else {
@@ -467,7 +501,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_NOT_FOUND, message = "Could not find a project with the given name."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response deleteProject(@PathParam("system") String system, @PathParam("projectName") String projectName) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Agent agent = Context.getCurrent().getMainAgent();
@@ -484,6 +518,9 @@ public class ProjectService extends RESTService {
 			
 			// also update project list and remove the project there
 			this.removeProjectFromProjectListEnvelope(system, projectName, serviceGroupAgent);
+			
+			// delete corresponding GitHub project (if there exists one)
+			deletedProject.deleteGitHubProject(system);
 		} catch (EnvelopeAccessDeniedException e) {
 			return Response.status(HttpURLConnection.HTTP_FORBIDDEN)
 					.entity("Agent is no project member and not allowed to delete it.").build();
@@ -492,6 +529,9 @@ public class ProjectService extends RESTService {
 					.entity("Could not find a project with the given name.").build();
 		} catch (EnvelopeOperationFailedException e) {
 			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		} catch (GitHubException e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+					.entity("Deletion of corresponding GitHub project failed.").build();
 		}
 		
 		if (this.eventManager.sendProjectDeletedEvent(Context.get(), system, deletedProject.toJSONObject())) {
@@ -549,7 +589,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response changeGroup(@PathParam("system") String system, String body) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
@@ -651,7 +691,7 @@ public class ProjectService extends RESTService {
 			@ApiResponse(code = HttpURLConnection.HTTP_BAD_REQUEST, message = "Input project is not well formatted or some attribute is missing."),
 			@ApiResponse(code = HttpURLConnection.HTTP_INTERNAL_ERROR, message = "Internal server error.") })
 	public Response changeMetadata(@PathParam("system") String system, String body) {
-		if(!this.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
 				.entity("Used system is not valid.").build();
 		
 		Context.get().monitorEvent(MonitoringEvent.SERVICE_MESSAGE, "changeGroup: trying to change group of project");
@@ -733,6 +773,149 @@ public class ProjectService extends RESTService {
 	}
 	
 	/**
+	 * This method is used to notify the project-service about the GitHub username of a user.
+	 * It checks every project where the user is a member of and grants the user access 
+	 * to the corresponding GitHub projects (if it is not already given).
+	 * @param system Name of the system
+	 * @param body JSON body that should contain the GitHub username.
+	 * @return Response containing the status code.
+	 */
+	@POST
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Path("/{system}/user/githubinfo")
+	public Response updateUserGitHubInfo(@PathParam("system") String system, String body) {
+		if(!this.systemsConfig.isValidSystemName(system)) return Response.status(HttpURLConnection.HTTP_BAD_REQUEST)
+				.entity("Used system is not valid.").build();
+		
+		if(!this.systemsConfig.gitHubProjectsEnabled(system)) return Response.status(HttpURLConnection.HTTP_OK).build();
+		
+		if (Context.getCurrent().getMainAgent() instanceof AnonymousAgent) {
+			return Response.status(HttpURLConnection.HTTP_UNAUTHORIZED).entity("User not authorized.").build();
+		};
+		
+		GroupAgent serviceGroupAgent = getServiceGroupAgent();
+		if (serviceGroupAgent == null)
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).entity("Cannot access service group agent.")
+					.build();
+		
+		Agent agent = Context.getCurrent().getMainAgent();
+		
+		JSONObject jsonBody;
+		String gitHubUsername = null;
+		try {
+			jsonBody = (JSONObject) JSONValue.parseWithException(body);
+			if(jsonBody.containsKey("gitHubUsername")) {
+			    gitHubUsername = (String) jsonBody.get("gitHubUsername");
+			} else {
+				return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("GitHub username is missing in body.").build();	
+			}
+		} catch (ParseException e) {
+		    return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).entity("Cannot parse JSON body.").build();
+		}
+		
+		try {
+			this.updateUserGitHubProjectsAccess(system, serviceGroupAgent, agent, gitHubUsername);
+		} catch (GitHubException e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
+					.entity("Communication with GitHub API failed.").build();
+		} catch (Exception e) {
+			return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR).build();
+		}
+		
+		return Response.status(HttpURLConnection.HTTP_OK).build();
+	}
+	
+	/**
+	 * Grants user access to all relevant GitHub projects (i.e., projects where the user 
+	 * is a member of) in the given system.
+	 * Also checks if someone who still has access to the GitHub project is no group
+	 * member anymore. In this case, access to GitHub project will be removed.
+	 * @param system System
+	 * @param serviceGroupAgent Group agent of the service used to access the project list envelope.
+	 * @param userAgent Agent of the user
+	 * @param gitHubUsername GitHub username of the user
+	 * @throws EnvelopeAccessDeniedException Project list envelope or project envelope could not be accessed.
+	 * @throws EnvelopeNotFoundException Project list envelope or project envelope not found.
+	 * @throws EnvelopeOperationFailedException Updating one of the envelopes failed.
+	 * @throws GitHubException Problem with communication with GitHub API.
+	 */
+	private void updateUserGitHubProjectsAccess(String system, GroupAgent serviceGroupAgent, Agent userAgent, String gitHubUsername)
+			throws EnvelopeAccessDeniedException, EnvelopeNotFoundException, EnvelopeOperationFailedException, GitHubException {
+		Envelope stored = null;
+		stored = Context.get().requestEnvelope(getProjectListIdentifier(system), serviceGroupAgent);
+	    ProjectContainer cc = (ProjectContainer) stored.getContent();
+		
+		// load all projects where the user is a member of
+		List<Project> userProjects = this.getProjectsOfUser(system, serviceGroupAgent, userAgent);
+		for(Project project : userProjects) {
+			if(!project.hasUserGitHubNameStored(userAgent)) {
+				// store the GitHub username of this user
+				project.addGitHubUsername(userAgent, gitHubUsername);
+				
+				// need to update project in envelope
+				cc.removeProject(project);
+				cc.addProject(project);
+				stored.setContent(cc);
+				Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+				
+				// since we now know the GitHub username, we can add the user to the GitHub project
+				GitHubHelper.getInstance().grantUserAccessToProject(system, gitHubUsername, project.getConnectedGitHubProject());
+			}
+			// check for other users, if someone left the group and still has access to GitHub project
+			String groupId = project.getGroupIdentifier();
+			try {
+				GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, userAgent);
+				boolean removedUser = project.removeNonGroupMembersGitHubAccess(system, ga.getMemberList());
+				if(removedUser) {
+					// need to update project in envelope
+					cc.removeProject(project);
+					cc.addProject(project);
+					stored.setContent(cc);
+					Context.get().storeEnvelope(stored, Context.get().getServiceAgent());
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**
+	 * Returns the list of projects where the user is a member of.
+	 * @param system Name of the system, where projects of the user should be searched.
+	 * @param serviceGroupAgent Agent to access project list envelope.
+	 * @param userAgent User agent to check if user has access to a project.
+	 * @return List of projects where the user is a member of.
+	 */
+	private List<Project> getProjectsOfUser(String system, GroupAgent serviceGroupAgent, Agent userAgent) {
+		ArrayList<Project> userProjects = new ArrayList<>();
+		
+		String identifier = getProjectListIdentifier(system);
+		
+		try {
+		    Envelope stored = Context.get().requestEnvelope(identifier, serviceGroupAgent);
+		    ProjectContainer cc = (ProjectContainer) stored.getContent();
+		    // read all projects from the project list
+		    List<Project> projects = cc.getAllProjects();
+
+		    for (Project project : projects) {
+			    // To check whether the user is a member of the project/group, we need the group
+			    // identifier
+			    String groupId = project.getGroupIdentifier();
+			    try {
+				    GroupAgent ga = (GroupAgent) Context.get().requestAgent(groupId, userAgent);
+				    // user is allowed to access group agent => user is a project/group member
+				    userProjects.add(project);
+			    } catch (AgentAccessDeniedException e) {
+				    // user is not allowed to access group agent => user is no project/group member
+			    }
+		    }
+		} catch (Exception e) {}
+		
+		return userProjects;
+	}
+	
+	/**
 	 * Returns the identifier of the envelope for the project with the given name.
 	 * @param system Prefix of the system which is used for all envelopes. Should be unique
 	 *        for every system using the project service.
@@ -751,39 +934,5 @@ public class ProjectService extends RESTService {
 	 */
 	public static String getProjectListIdentifier(String system) {
 		return system + "_" + projects_prefix;
-	}
-	
-	/**
-	 * Checks if the given system name is valid, i.e. if it is part of the systems JSON given as a system property.
-	 * @param system Name of the system.
-	 * @return Whether the given system name is valid.
-	 */
-	private boolean isValidSystemName(String system) {
-		return this.systemsJSON.containsKey(system);
-	}
-	
-	/**
-	 * Returns the value of the "visibilityOfProjects" attribute of the given system.
-	 * @param system Name of the system.
-	 * @return Value of "visibilityOfProjects" attribute set for this system.
-	 */
-	private String getVisibilityOfProjectsBySystem(String system) {
-		JSONObject systemJSON = (JSONObject) this.systemsJSON.get(system);
-		String visibility = (String) systemJSON.getOrDefault("visibilityOfProjects", visibilityOfProjectsDefault);
-		return visibility;
-	}
-	
-	/**
-	 * Returns a map consisting for every system (key) the corresponding event listener service name (as value).
-	 * If the event listener service was not set in the properties file, then it is null.
-	 * @return
-	 */
-	private HashMap<String, String> getSystemEventListenerServiceMap() {
-		HashMap<String, String> map = new HashMap<>();
-		for(Object system : this.systemsJSON.keySet()) {
-			String eventListenerService = (String)((JSONObject) systemsJSON.get(system)).getOrDefault("eventListenerService", null);
-			map.put((String) system, eventListenerService);
-		}
-		return map;
 	}
 }

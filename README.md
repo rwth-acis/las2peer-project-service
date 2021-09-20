@@ -12,6 +12,7 @@ Execute the following command on your shell:
 ```shell
 gradle clean build 
 ```
+Make sure to use **Java 14** and **Gradle 6.8**.
 
 Service Properties
 --------
@@ -46,6 +47,25 @@ In this example, we are supporting two systems, namely the "SBF" and "CAE".
 In the CAE it is possible to view all projects, even the ones where a user is no member of.
 The SBF only allows to read those projects, where the user is a member of.
 Besides that, the ModelPersistenceService is called in the CAE, if specific events (such as project-creation) occur. For more information, see the section on the event listener service.
+
+GitHub Projects Extension (Optional)
+------------------------------------
+It is possible to enable the GitHub projects extension for a system.
+Then, for every las2peer project in the system, a corresponding GitHub project will be created and can be used for project management.
+To enable the extension for a system, edit the "SYSTEMS" environment variable.
+In the example from above, enabling it for the system named SBF would work as follows:
+```
+...
+"SBF": {
+    ...
+    "gitHubProjectsEnabled": true,
+    "gitHubOrganization": <Name of a GitHub organization>,
+    "gitHubPersonalAccessToken": <Personal access token with access to GitHub organization>
+}
+...
+```
+The GitHub projects will be added within the given GitHub organization.
+Therefore, a personal access token is required, that allows to use the GitHub API to create new GitHub projects in the organization and to add members to it.
 
 Event Listener Service
 --------

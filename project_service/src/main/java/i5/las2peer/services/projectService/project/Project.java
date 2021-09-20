@@ -1,18 +1,22 @@
 package i5.las2peer.services.projectService.project;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import org.json.simple.JSONValue;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 
-import i5.las2peer.api.Context;
 import i5.las2peer.api.security.Agent;
+import i5.las2peer.services.projectService.util.github.GitHubException;
+import i5.las2peer.services.projectService.util.github.GitHubHelper;
+import i5.las2peer.services.projectService.util.github.GitHubProject;
 
 /**
  * (Data-)Class for Projects. Provides means to convert JSON to Object and
- * Object to JSON. TODO: check if this javadoc is still correct later
+ * Object to JSON.
  */
 public class Project implements Serializable {
 
@@ -42,6 +46,17 @@ public class Project implements Serializable {
 	 * might be system-specific.
 	 */
 	private String metadata;
+	
+	/**
+	 * Information on the connected GitHub project (if there is one connected).
+	 */
+	private GitHubProject connectedGitHubProject = null;
+	
+	/**
+	 * Maps user agent identifiers to their GitHub username.
+	 * If the GitHub projects connection is disabled, this map might not be defined.
+	 */
+	private HashMap<String, String> memberGitHubUsernames;
 
 	/**
 	 * Creates a project object from the given JSON string. This constructor should
@@ -82,23 +97,8 @@ public class Project implements Serializable {
 			JSONObject empty = new JSONObject();
 			this.metadata = empty.toJSONString();
 		}
-
-		/*if (project.containsKey("users")) {
-			for (int i = 0; i < ((JSONArray) project.get("users")).size(); i++) {
-				String userName = ((JSONArray) project.get("users")).get(i).toString();
-				try {
-					String userId = Context.get().getUserAgentIdentifierByLoginName(userName);
-					System.out.println(userId);
-					// this.users.add(userId);
-				} catch (Exception q) {
-					System.out.println(q + "User does not exist?");
-				}
-				
-				if(user != true) {
-				 
-				}	
-			}
-		}*/
+		
+		this.memberGitHubUsernames = new HashMap<>();
 	}
 
 	/**
@@ -149,8 +149,31 @@ public class Project implements Serializable {
 		jsonProject.put("groupName", this.groupName);
 		jsonProject.put("groupIdentifier", this.groupIdentifier);
 		jsonProject.put("metadata", this.getMetadataAsJSONObject());
+		if(this.gitHubProjectConnected()) {
+			jsonProject.put("gitHubProject", this.connectedGitHubProject.toJSONObject());
+		}
 
 		return jsonProject;
+	}
+	
+	/**
+	 * Uses the GitHubHelper to create a GitHub project for this las2peer project.
+	 * @param systemName Name of the system (used to find correct GitHub organization for GitHub project).
+	 * @throws GitHubException If the project creation on GitHub failed.
+	 */
+	public void createGitHubProject(String systemName) throws GitHubException {
+		this.connectedGitHubProject = GitHubHelper.getInstance().createPublicGitHubProject(systemName, this.getName());
+	}
+	
+	/**
+	 * Uses the GitHubHelper to delete the corresponding GitHub project (if there exists one).
+	 * @param systemName Name of the system (used to find correct GitHub organization for GitHub project).
+	 * @throws GitHubException If the GitHub project deletion failed.
+	 */
+	public void deleteGitHubProject(String systemName) throws GitHubException {
+		if(this.gitHubProjectConnected()) {
+			GitHubHelper.getInstance().deleteGitHubProject(systemName, this.connectedGitHubProject);
+		}
 	}
 
 	/**
@@ -196,5 +219,71 @@ public class Project implements Serializable {
 	 */
 	public JSONObject getMetadataAsJSONObject() {
 		return (JSONObject) JSONValue.parse(this.metadata);
+	}
+	
+	/**
+	 * Checks whether there is a GitHub project connected to this las2peer project.
+	 * @return Whether there is a GitHub project connected to this las2peer project.
+	 */
+	public boolean gitHubProjectConnected() {
+		return this.connectedGitHubProject != null;
+	}
+	
+	public GitHubProject getConnectedGitHubProject() {
+		return this.connectedGitHubProject;
+	}
+	
+	/**
+	 * Checks if the GitHub username of the given user is already stored inside this project.
+	 * @param userAgent Agent of the user.
+	 * @return Whether the GitHub username of the given user is already stored inside this project.
+	 */
+	public boolean hasUserGitHubNameStored(Agent userAgent) {
+		return this.memberGitHubUsernames.containsKey(userAgent.getIdentifier());
+	}
+	
+	/**
+	 * Stores the GitHub username of the user in the memberGitHubUsernames HashMap.
+	 * @param userAgent Agent of the user.
+	 * @param gitHubUsername GitHub username of the user.
+	 */
+	public void addGitHubUsername(Agent userAgent, String gitHubUsername) {
+		this.memberGitHubUsernames.put(userAgent.getIdentifier(), gitHubUsername);
+	}
+	
+	/**
+	 * Checks if a user that is no group member anymore still has access to the GitHub project.
+	 * In this case, access will be removed.
+	 * @param system Name of the system.
+	 * @param groupMemberIds Array containing the agent ids of the current group members.
+	 * @return True if a group member was removed from access, false otherwise.
+	 * @throws GitHubException If something with the communication with GitHub went wrong.
+	 */
+	public boolean removeNonGroupMembersGitHubAccess(String system, String[] groupMemberIds) throws GitHubException {
+		boolean changed = false;
+		List<String> ghProjectMemberUserIds = new ArrayList<>();
+		for(String userId : this.memberGitHubUsernames.keySet()) {
+			ghProjectMemberUserIds.add(userId);
+		}
+		
+		for(String userId : ghProjectMemberUserIds) {
+			// check if the user is still a member of the group
+			boolean stillMember = false;
+			for(String groupMemberId : groupMemberIds) {
+				if(groupMemberId.equals(userId)) {
+					stillMember = true;
+					break;
+				}
+			}
+			if(!stillMember) {
+				// user left the group
+				// remove access to GitHub project
+				String username = this.memberGitHubUsernames.get(userId);
+				this.memberGitHubUsernames.remove(userId);
+				GitHubHelper.getInstance().removeUserAccessToProject(system, username, this.connectedGitHubProject);
+				changed = true;
+			}
+		}
+		return changed;
 	}
 }
