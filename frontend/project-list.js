@@ -349,7 +349,7 @@ export class ProjectList extends LitElement {
                   <!-- Link to GitHub -->
                   ${project.gitHubProject ? html `
                     <a title="View project on GitHub" href=${project.gitHubProject.url} target="_blank"
-                       style="margin-top: 0.3em; margin-right: 0.5em">
+                       style="margin-top: auto; margin-bottom:auto; margin-right: 0.5em">
                       <svg width="24px" height="24px">
                         <image xlink:href="https://raw.githubusercontent.com/primer/octicons/e9a9a84fb796d70c0803ab8d62eda5c03415e015/icons/mark-github-16.svg" width="24px" height="24px"/>
                       </svg>
