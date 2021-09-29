@@ -92,7 +92,7 @@ Therefore, the project service provides the following methods:
 Start
 --------
 
-First of all make sure that you have a running instance of the [Contact Service](https://github.com/rwth-acis/las2peer-contact-service).
+First of all make sure that you have a running instance of the [Contact Service](https://github.com/rwth-acis/las2peer-contact-service) and the [User Information Service](https://github.com/rwth-acis/las2peer-user-information-service).
 
 To start the Project Service, use one of the available start scripts:
 
