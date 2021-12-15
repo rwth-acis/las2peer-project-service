@@ -12,7 +12,7 @@ Execute the following command on your shell:
 ```shell
 gradle clean build 
 ```
-Make sure to use **Java 14** and **Gradle 6.8**.
+Make sure to use **Java 17** and **Gradle 7.2**.
 
 Service Properties
 --------
