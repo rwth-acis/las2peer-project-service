@@ -61,9 +61,6 @@ export class DemoElement extends LitElement {
     <las2peer-frontend-statusbar
     id="statusBar"
     service="Project List Demo"
-    oidcpopupsigninurl="/callbacks/popup-signin-callback.html"
-    oidcpopupsignouturl="/callbacks/popup-signout-callback.html"
-    oidcsilentsigninurl="/callbacks/silent-callback.html"
     oidcclientid="localtestclient"
     suppresswidgeterror="true"
     autoAppendWidget=true
