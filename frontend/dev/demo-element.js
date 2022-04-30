@@ -31,7 +31,7 @@ export class DemoElement extends LitElement {
     console.log(event.detail.access_token);
     Auth.setAuthDataToLocalStorage(event.detail.access_token);
 
-    var url = "https://auth.las2peer.org/auth/realms/main/protocol/openid-connect/userinfo";
+    var url = "https://api.learning-layers.eu/auth/realms/main/protocol/openid-connect/userinfo";
     fetch(url, {method: "GET", headers: {
       "Authorization": "Bearer " + Auth.getAccessToken()
     }}).then(response => {
