@@ -61,12 +61,10 @@ export class DemoElement extends LitElement {
     <las2peer-frontend-statusbar
     id="statusBar"
     service="Project List Demo"
-    oidcpopupsigninurl="/callbacks/popup-signin-callback.html"
-    oidcpopupsignouturl="/callbacks/popup-signout-callback.html"
-    oidcsilentsigninurl="/callbacks/silent-callback.html"
     oidcclientid="localtestclient"
     suppresswidgeterror="true"
     autoAppendWidget=true
+    oidcAuthority="https://api.learning-layers.eu/o/oauth2"
     ></las2peer-frontend-statusbar>
       <h2>Project list with "All Projects" enabled</h2>
       <div style="display: flex">
