@@ -64,6 +64,7 @@ export class DemoElement extends LitElement {
     oidcclientid="localtestclient"
     suppresswidgeterror="true"
     autoAppendWidget=true
+    oidcAuthority="https://api.learning-layers.eu/o/oauth2"
     ></las2peer-frontend-statusbar>
       <h2>Project list with "All Projects" enabled</h2>
       <div style="display: flex">
