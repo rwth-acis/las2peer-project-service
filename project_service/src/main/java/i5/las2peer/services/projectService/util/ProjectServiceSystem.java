@@ -1,5 +1,6 @@
 package i5.las2peer.services.projectService.util;
 
+import i5.las2peer.services.projectService.chat.RocketChatConfig;
 import org.json.simple.JSONObject;
 
 import i5.las2peer.services.projectService.ProjectService;
@@ -18,6 +19,8 @@ public class ProjectServiceSystem {
 	private static final String JSON_KEY_GITHUB_PROJECTS_ENABLED = "gitHubProjectsEnabled";
     private static final String JSON_KEY_GITHUB_ORGANIZATION = "gitHubOrganization";
     private static final String JSON_KEY_GITHUB_PERSONAL_ACCESS_TOKEN = "gitHubPersonalAccessToken";
+
+	private static final String JSON_KEY_ROCKET_CHAT_CONFIG = "rocketchat";
 	
 	/**
 	 * Name of the system. Example: SBF
@@ -53,6 +56,8 @@ public class ProjectServiceSystem {
 	 * to create new GitHub projects in the used GitHub organization.
 	 */
 	private String gitHubPersonalAccessToken;
+
+	private RocketChatConfig rocketChatConfig = null;
 	
 	public ProjectServiceSystem(String systemName, JSONObject systemJSON) {
 		this.name = systemName;
@@ -73,6 +78,10 @@ public class ProjectServiceSystem {
 			this.gitHubProjectsEnabled = (boolean) systemJSON.get(JSON_KEY_GITHUB_PROJECTS_ENABLED);
 			this.gitHubOrganization = (String) systemJSON.get(JSON_KEY_GITHUB_ORGANIZATION);
 			this.gitHubPersonalAccessToken = (String) systemJSON.get(JSON_KEY_GITHUB_PERSONAL_ACCESS_TOKEN);
+		}
+		
+		if(systemJSON.containsKey(JSON_KEY_ROCKET_CHAT_CONFIG)) {
+			this.rocketChatConfig = RocketChatConfig.fromJSON((JSONObject) systemJSON.get(JSON_KEY_ROCKET_CHAT_CONFIG));
 		}
 		
 		this.eventListenerService = (String) systemJSON.getOrDefault(JSON_KEY_EVENT_LISTENER_SERVICE, null);
@@ -106,4 +115,13 @@ public class ProjectServiceSystem {
 	public String getGitHubPersonalAccessToken() {
 		return this.gitHubPersonalAccessToken;
 	}
+
+	public RocketChatConfig getRocketChatConfig() {
+		return rocketChatConfig;
+	}
+
+	public boolean isChannelCreationEnabled() {
+		return this.rocketChatConfig != null;
+	}
+
 }
