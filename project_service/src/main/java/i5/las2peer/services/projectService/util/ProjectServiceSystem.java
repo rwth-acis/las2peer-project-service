@@ -1,6 +1,8 @@
 package i5.las2peer.services.projectService.util;
 
+import i5.las2peer.services.projectService.chat.ChatManager;
 import i5.las2peer.services.projectService.chat.RocketChatConfig;
+import i5.las2peer.services.projectService.chat.RocketChatManager;
 import org.json.simple.JSONObject;
 
 import i5.las2peer.services.projectService.ProjectService;
@@ -124,4 +126,7 @@ public class ProjectServiceSystem {
 		return this.rocketChatConfig != null;
 	}
 
+	public ChatManager getChatManager() {
+		return new RocketChatManager(this.rocketChatConfig);
+	}
 }

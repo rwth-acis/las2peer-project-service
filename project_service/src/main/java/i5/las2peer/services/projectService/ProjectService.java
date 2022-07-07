@@ -30,6 +30,7 @@ import i5.las2peer.api.persistency.EnvelopeNotFoundException;
 import i5.las2peer.api.persistency.EnvelopeOperationFailedException;
 import i5.las2peer.restMapper.RESTService;
 import i5.las2peer.restMapper.annotations.ServicePath;
+import i5.las2peer.services.projectService.chat.ChatManager;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -283,6 +284,15 @@ public class ProjectService extends RESTService {
 				} catch (GitHubException e) {
 					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
 							.entity("Creation of GitHub project failed.").build();
+				}
+			}
+
+			// check if chat channel should be created
+			if(this.systemsConfig.isChannelCreationEnabled(system)) {
+                ChatManager chatManager = this.systemsConfig.getChatManager(system);
+                JSONObject chatInfo = chatManager.createProjectChannel(project, system);
+				if(chatInfo != null) {
+					project.setChatInfo(chatInfo);
 				}
 			}
 
