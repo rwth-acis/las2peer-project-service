@@ -190,6 +190,15 @@ public class ProjectService extends RESTService {
 		return metadata;
 	}
 
+	public JSONObject getProjectChatInfo(String system, String projectName) {
+		Response r = this.getProjectByName(system, projectName);
+		if(r.getStatus() != 200) return null;
+		String entity = (String) r.getEntity();
+		JSONObject projectJSON = (JSONObject) JSONValue.parse(entity);
+		JSONObject chatInfo = (JSONObject) projectJSON.get("chatInfo");
+		return chatInfo;
+	}
+
 	/**
 	 * Creates a new project in the pastry storage. Therefore, the user needs to be
 	 * authorized. First, checks if a project with the given name already exists. If
