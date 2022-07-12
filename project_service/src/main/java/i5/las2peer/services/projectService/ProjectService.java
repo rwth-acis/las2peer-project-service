@@ -30,6 +30,7 @@ import i5.las2peer.api.persistency.EnvelopeNotFoundException;
 import i5.las2peer.api.persistency.EnvelopeOperationFailedException;
 import i5.las2peer.restMapper.RESTService;
 import i5.las2peer.restMapper.annotations.ServicePath;
+import i5.las2peer.services.projectService.chat.ChatManager;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -189,6 +190,15 @@ public class ProjectService extends RESTService {
 		return metadata;
 	}
 
+	public JSONObject getProjectChatInfo(String system, String projectName) {
+		Response r = this.getProjectByName(system, projectName);
+		if(r.getStatus() != 200) return null;
+		String entity = (String) r.getEntity();
+		JSONObject projectJSON = (JSONObject) JSONValue.parse(entity);
+		JSONObject chatInfo = (JSONObject) projectJSON.get("chatInfo");
+		return chatInfo;
+	}
+
 	/**
 	 * Creates a new project in the pastry storage. Therefore, the user needs to be
 	 * authorized. First, checks if a project with the given name already exists. If
@@ -283,6 +293,15 @@ public class ProjectService extends RESTService {
 				} catch (GitHubException e) {
 					return Response.status(HttpURLConnection.HTTP_INTERNAL_ERROR)
 							.entity("Creation of GitHub project failed.").build();
+				}
+			}
+
+			// check if chat channel should be created
+			if(this.systemsConfig.isChannelCreationEnabled(system)) {
+                ChatManager chatManager = this.systemsConfig.getChatManager(system);
+                JSONObject chatInfo = chatManager.createProjectChannel(project, system);
+				if(chatInfo != null) {
+					project.setChatInfo(chatInfo);
 				}
 			}
 
