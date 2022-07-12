@@ -3,6 +3,8 @@ package i5.las2peer.services.projectService.util;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import i5.las2peer.services.projectService.chat.ChatManager;
 import org.json.simple.JSONObject;
 
 import i5.las2peer.services.projectService.ProjectService;
@@ -88,6 +90,20 @@ public class SystemsConfig {
 	public String getGitHubPATBySystem(String systemName) {
 		for(ProjectServiceSystem system : this.systems) {
 			if(system.getName().equals(systemName)) return system.getGitHubPersonalAccessToken();
+		}
+		return null;
+	}
+
+	public boolean isChannelCreationEnabled(String systemName) {
+		for(ProjectServiceSystem system : this.systems) {
+			if(system.getName().equals(systemName)) return system.isChannelCreationEnabled();
+		}
+		return false;
+	}
+
+	public ChatManager getChatManager(String systemName) {
+		for(ProjectServiceSystem system : this.systems) {
+			if(system.getName().equals(systemName)) return system.getChatManager();
 		}
 		return null;
 	}

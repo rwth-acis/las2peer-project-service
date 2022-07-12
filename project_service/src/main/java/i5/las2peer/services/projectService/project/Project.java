@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONValue;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
@@ -57,6 +58,8 @@ public class Project implements Serializable {
 	 * If the GitHub projects connection is disabled, this map might not be defined.
 	 */
 	private HashMap<String, String> memberGitHubUsernames;
+
+	private JSONObject chatInfo = new JSONObject();
 
 	/**
 	 * Creates a project object from the given JSON string. This constructor should
@@ -152,6 +155,7 @@ public class Project implements Serializable {
 		if(this.gitHubProjectConnected()) {
 			jsonProject.put("gitHubProject", this.connectedGitHubProject.toJSONObject());
 		}
+		jsonProject.put("chatInfo", this.chatInfo);
 
 		return jsonProject;
 	}
@@ -285,5 +289,9 @@ public class Project implements Serializable {
 			}
 		}
 		return changed;
+	}
+
+	public void setChatInfo(JSONObject chatInfo) {
+		this.chatInfo = chatInfo;
 	}
 }
