@@ -45,6 +45,34 @@ public class RocketChatManager extends ChatManager {
         return channelInfo;
     }
 
+    @Override
+    public JSONObject getChannelInfoForExistingChannel(String channelName) {
+        String channelId = getChannelIdByName(channelName);
+        JSONObject channelInfo = new JSONObject();
+        channelInfo.put("type", "RocketChat");
+        channelInfo.put("url", getConfig().getUrl());
+        channelInfo.put("channelId", channelId);
+        channelInfo.put("chatUrl", getConfig().getUrl() + "/channel/" + channelId);
+        return channelInfo;
+    }
+
+    private String getChannelIdByName(String channelName) {
+        HttpResponse<String> response = Unirest.get(getConfig().getUrl() + "/api/v1/channels.info")
+                .header("X-Auth-Token", getConfig().getBotAuthToken())
+                .header("X-User-Id", getConfig().getBotUserId())
+                .queryString("roomName", channelName)
+                .asString();
+
+        if(!response.isSuccess()) {
+            System.out.println("RocketChat channel info request failed.");
+            return null;
+        }
+
+        JSONObject res = (JSONObject) JSONValue.parse(response.getBody());
+        JSONObject resChannel = (JSONObject) res.get("channel");
+        return (String) resChannel.get("_id");
+    }
+
     private RocketChatConfig getConfig() {
         return (RocketChatConfig) this.config;
     }

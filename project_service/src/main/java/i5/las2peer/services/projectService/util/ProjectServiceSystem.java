@@ -122,7 +122,7 @@ public class ProjectServiceSystem {
 		return rocketChatConfig;
 	}
 
-	public boolean isChannelCreationEnabled() {
+	public boolean isChannelConnectionEnabled() {
 		return this.rocketChatConfig != null;
 	}
 
