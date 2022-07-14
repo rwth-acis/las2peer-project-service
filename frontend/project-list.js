@@ -10,6 +10,7 @@ import '@polymer/paper-listbox/paper-listbox.js';
 import '@polymer/paper-tabs';
 import '@polymer/iron-icon/iron-icon.js';
 import '@polymer/iron-icons/social-icons.js';
+import '@polymer/paper-checkbox/paper-checkbox.js';
 import OnlineUserListHelper from './util/online-user-list-helper'
 
 import Auth from './util/auth';
@@ -205,7 +206,8 @@ export class ProjectList extends LitElement {
        */
       projectOptionsSelected: {
         type: Object
-      }
+      },
+      connectChannelVisible: { type: Boolean }
     };
   }
 
@@ -225,6 +227,7 @@ export class ProjectList extends LitElement {
     this.disableAllProjects = false;
     this.yjsAddress = "http://127.0.0.1:1234";
     this.yjsResourcePath = "./socket.io";
+    this.connectChannelVisible = false;
   }
 
   connectedCallback() {
@@ -378,6 +381,14 @@ export class ProjectList extends LitElement {
             `)}
         </paper-listbox>
         </paper-dropdown-menu>
+        <div>
+          <paper-checkbox id="cb-connect-channel" @change=${(e) => this.connectChannelVisible = e.target.checked} >Connect to chat channel</paper-checkbox>
+          <div ?hidden=${!this.connectChannelVisible}>
+            <paper-input id="input-channel-name" placeholder="Channel name"></paper-input>
+            or:
+            <paper-checkbox id="cb-create-new-channel">Create new channel</paper-checkbox>
+          </div>
+        </div>
         <div class="buttons">
           <paper-button @click="${this._closeCreateProjectDialogClicked}" dialog-dismiss>Cancel</paper-button>
           <paper-button id="dialog-button-create" @click="${this._createProject}" dialog-confirm>Create</paper-button>
@@ -733,6 +744,23 @@ export class ProjectList extends LitElement {
           "linkedGroup": linkedGroup,
           "users": users
         };
+
+        // check if project should be linked to chat channel
+        const connectChannel = this.shadowRoot.getElementById("cb-connect-channel").checked;
+        const chatInfo = {
+          connectChannel,
+          newChannel: false
+        };
+        if(connectChannel) {
+          // check if new channel should be created
+          const newChannel =  this.shadowRoot.getElementById("cb-create-new-channel").checked;
+          chatInfo.newChannel = newChannel;
+          if(!newChannel) {
+            chatInfo.channelName = this.shadowRoot.getElementById("input-channel-name").value;
+          }
+        }
+        body.chatInfo = chatInfo;
+
         if(GitHub.gitHubUsernameStored()) {
           body.gitHubUsername = GitHub.getGitHubUsername();
         }
