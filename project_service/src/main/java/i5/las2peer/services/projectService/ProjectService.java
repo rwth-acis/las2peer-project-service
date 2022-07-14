@@ -241,9 +241,11 @@ public class ProjectService extends RESTService {
 			Project project;
 			String creatorGitHubUsername = null;
 
+			JSONObject bodyJSON;
+
 			try {
 				project = new Project(agent, inputProject);
-				JSONObject bodyJSON = (JSONObject) JSONValue.parseWithException(inputProject);
+				bodyJSON = (JSONObject) JSONValue.parseWithException(inputProject);
 				if(bodyJSON.containsKey("gitHubUsername")) {
 					creatorGitHubUsername = (String) bodyJSON.get("gitHubUsername");
 				}
@@ -296,12 +298,27 @@ public class ProjectService extends RESTService {
 				}
 			}
 
-			// check if chat channel should be created
-			if(this.systemsConfig.isChannelCreationEnabled(system)) {
-                ChatManager chatManager = this.systemsConfig.getChatManager(system);
-                JSONObject chatInfo = chatManager.createProjectChannel(project, system);
-				if(chatInfo != null) {
-					project.setChatInfo(chatInfo);
+			// check if chat channel connection is enabled for the system
+			if(this.systemsConfig.isChannelConnectionEnabled(system)) {
+				// check if channel should be linked for the new project
+				JSONObject bodyChatInfo = (JSONObject) bodyJSON.get("chatInfo");
+				boolean connectChannel = (boolean) bodyChatInfo.get("connectChannel");
+				if(connectChannel) {
+					ChatManager chatManager = this.systemsConfig.getChatManager(system);
+					JSONObject chatInfo;
+
+					boolean newChannel = (boolean) bodyChatInfo.get("newChannel");
+					if (newChannel) {
+						chatInfo = chatManager.createProjectChannel(project, system);
+					} else {
+						// use existing channel
+						String channelName = (String) bodyChatInfo.get("channelName");
+						chatInfo = chatManager.getChannelInfoForExistingChannel(channelName);
+					}
+
+					if (chatInfo != null) {
+						project.setChatInfo(chatInfo);
+					}
 				}
 			}
 
