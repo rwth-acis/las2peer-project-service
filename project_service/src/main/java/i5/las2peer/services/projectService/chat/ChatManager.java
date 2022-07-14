@@ -16,5 +16,6 @@ public abstract class ChatManager {
     }
 
     public abstract JSONObject createProjectChannel(Project project, String systemName);
+    public abstract JSONObject getChannelInfoForExistingChannel(String channelName);
 
 }

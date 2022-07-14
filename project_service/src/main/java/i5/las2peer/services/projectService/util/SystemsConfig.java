@@ -94,9 +94,9 @@ public class SystemsConfig {
 		return null;
 	}
 
-	public boolean isChannelCreationEnabled(String systemName) {
+	public boolean isChannelConnectionEnabled(String systemName) {
 		for(ProjectServiceSystem system : this.systems) {
-			if(system.getName().equals(systemName)) return system.isChannelCreationEnabled();
+			if(system.getName().equals(systemName)) return system.isChannelConnectionEnabled();
 		}
 		return false;
 	}
