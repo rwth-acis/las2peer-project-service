@@ -190,6 +190,12 @@ public class ProjectService extends RESTService {
 		return metadata;
 	}
 
+	public JSONObject getProjectsRMI(String system) {
+		Response r = this.getProjects(system);
+		if(r.getStatus() != 200) return new JSONObject();
+		return (JSONObject) r.getEntity();
+	}
+
 	public JSONObject getProjectChatInfo(String system, String projectName) {
 		Response r = this.getProjectByName(system, projectName);
 		if(r.getStatus() != 200) return null;
