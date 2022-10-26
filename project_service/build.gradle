@@ -25,7 +25,7 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
 
 	// https://mvnrepository.com/artifact/org.json/json
-    implementation group: 'org.json', name: 'json', version: '20220320'
+    implementation group: 'org.json', name: 'json', version: '20220924'
 	
 	implementation 'com.googlecode.json-simple:json-simple:1.1.1'
     // las2peer bundle which is not necessary in the runtime path
