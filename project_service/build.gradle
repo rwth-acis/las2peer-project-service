@@ -32,7 +32,7 @@ dependencies {
     // compileOnly will be moved into the lib dir afterwards
     implementation "i5:las2peer-bundle:${project.property('core.version')}"
 
-    implementation "com.konghq:unirest-java:3.14.2"
+    implementation "com.konghq:unirest-java:3.14.3"
     
 }
 
