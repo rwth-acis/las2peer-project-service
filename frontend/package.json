@@ -38,6 +38,6 @@
     "yjs": "^12.3.3"
   },
   "devDependencies": {
-    "@web/dev-server": "^0.2.1"
+    "@web/dev-server": "^0.3.0"
   }
 }
